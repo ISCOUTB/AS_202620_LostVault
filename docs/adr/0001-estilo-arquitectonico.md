@@ -3,7 +3,7 @@
 - **Estado**: Aceptado
 - **Fecha**: 2026-08-23
 - **Decisores**: Equipo LostVault
-
+ 
 ## Contexto
 
 LostVault necesita un estilo arquitectónico definido antes de empezar a
