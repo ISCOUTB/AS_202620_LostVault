@@ -1,0 +1,12 @@
+flowchart LR
+    Lost["Estudiante que perdió un objeto"]
+    Finder["Estudiante que encontró un objeto"]
+    Staff["Encargado de objetos perdidos"]
+    System["LostVault\nMarketplace de objetos perdidos"]
+
+    Lost -->|Busca y filtra objetos| System
+    Finder -->|Publica objeto encontrado| System
+    Staff -->|Publica y administra objetos| System
+    System -->|Muestra coincidencias y estado de reclamación| Lost
+    System -->|Confirma publicación| Finder
+    System -->|Entrega información centralizada| Staff

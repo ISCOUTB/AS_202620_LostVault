@@ -1,39 +1,48 @@
-# LostVault — Esqueleto ejecutable
+# LostVault — línea base arquitectónica corregida
 
-Este repositorio contiene únicamente el **esqueleto ejecutable** correspondiente a la responsabilidad de esta etapa.
+LostVault es una plataforma tipo Marketplace para objetos perdidos y encontrados dentro de la universidad.
 
-La estructura está preparada para el estilo arquitectónico seleccionado por el equipo:
+## Decisión arquitectónica
 
-> **Monolito modular con aplicación selectiva de principios de arquitectura hexagonal.**
+**Monolito modular con aplicación selectiva de principios de arquitectura hexagonal.**
+
+La decisión está documentada en `docs/adr/0001-estilo-arquitectonico.md` y se traza desde los aspectos y escenarios de calidad.
 
 ## Estructura
 
 ```text
 lib/
 ├── core/
+│   ├── domain/
+│   ├── application/
+│   ├── infrastructure/
+│   └── public/
 └── features/
     ├── authentication/
+    │   ├── domain/ application/ infrastructure/ public/
     ├── objects/
     ├── search/
     ├── claims/
     ├── identity_verification/
     └── users/
 
-test/
-└── widget_test.dart
+docs/
+├── adr/
+├── arc42/
+└── c4/
+
+.github/workflows/flutter.yml
 ```
 
-Los paquetes están preparados, pero **no contienen lógica de negocio**. La implementación de las funcionalidades corresponde a las siguientes etapas del proyecto.
+Cada módulo mantiene una frontera pública en `public/`. El dominio y la aplicación no dependen de implementaciones concretas de infraestructura.
 
 ## Requisitos
 
-- Flutter SDK instalado.
+- Flutter SDK estable.
 - Dart incluido con Flutter.
-- Un dispositivo físico o emulador disponible para ejecutar la aplicación.
+- Dispositivo físico o emulador para ejecutar la aplicación.
 
-## Instalar dependencias
-
-Desde la raíz del proyecto:
+## Instalar
 
 ```bash
 flutter pub get
@@ -45,33 +54,29 @@ flutter pub get
 flutter run
 ```
 
-El comando `flutter run` inicia la aplicación y muestra la pantalla mínima del esqueleto de LostVault.
-
-## Ejecutar pruebas
+## Analizar y probar
 
 ```bash
+flutter analyze
 flutter test
 ```
 
-La prueba automatizada verifica que `LostVaultApp` se inicia y renderiza correctamente el esqueleto.
+El workflow `.github/workflows/flutter.yml` ejecuta automáticamente análisis y pruebas en cada push y pull request. La revisión final del criterio «prueba en verde» debe hacerse después de que GitHub Actions ejecute el workflow.
 
-## Estado de esta entrega
+## Documentación arquitectónica
 
-- [x] Proyecto Flutter ejecutable.
-- [x] Estructura de monolito modular.
-- [x] Paquete `core`.
-- [x] Paquete `authentication`.
-- [x] Paquete `objects`.
-- [x] Paquete `search`.
-- [x] Paquete `claims`.
-- [x] Paquete `identity_verification`.
-- [x] Paquete `users`.
-- [x] Prueba automatizada inicial.
-- [x] Instrucciones de ejecución.
-- [ ] Lógica de negocio.
+- `docs/ficha_problema.md`: problema, población, alcance y tensiones de calidad.
+- `docs/aspectos.md`: tabla de aspectos con trazabilidad y trade-offs.
+- `docs/arc42/01_objetivos.md`: objetivos y prioridades.
+- `docs/arc42/02_restricciones.md`: restricciones.
+- `docs/arc42/03_contexto.md`: contexto y actores.
+- `docs/arc42/04_estilo_arquitectonico.md`: estrategia y comparación contra escenarios.
+- `docs/arc42/10_requisitos_calidad.md`: árbol de utilidad y escenarios medibles.
+- `docs/c4/contexto.mmd`: C4 de contexto como código.
+- `docs/c4/c4_contexto.png`: representación visual.
+- `docs/adr/0001-estilo-arquitectonico.md`: decisión arquitectónica y trazabilidad.
+- `docs/ia.md`: uso de IA, aceptaciones y rechazos.
 
-## Objetivo
+## Alcance de esta línea base
 
-El propósito de este esqueleto es que la semana 4 pueda comenzar directamente sobre la estructura arquitectónica acordada, sin dedicar tiempo a montar nuevamente el proyecto.
-
-No se implementa lógica de negocio en esta etapa.
+Esta versión corrige los hallazgos documentales y estructurales de S1–S3 y deja una implementación Flutter mínima para demostrar que los módulos pueden evolucionar sin romper la frontera arquitectónica. No pretende afirmar que las métricas de producción de disponibilidad o rendimiento ya están demostradas; esas requieren ejecución y medición real.

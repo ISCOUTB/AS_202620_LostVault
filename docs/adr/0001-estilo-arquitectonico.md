@@ -34,13 +34,18 @@ Estructura de referencia:
 
 ```
 lib/
-├── authentication/
-├── objects/
-├── search/
-├── claims/
-├── identity_verification/
-├── users/
-└── shared/
+├── core/
+│   ├── domain/
+│   ├── application/
+│   ├── infrastructure/
+│   └── public/
+└── features/
+    ├── authentication/
+    ├── objects/
+    ├── search/
+    ├── claims/
+    ├── identity_verification/
+    └── users/
 ```
 
 Dentro de cada módulo (`objects/`, `search/`, etc.) se organiza, como
@@ -51,8 +56,7 @@ mínimo, en:
 - `infrastructure/` — persistencia y adaptadores del módulo.
 - `public/` — lo único que otros módulos pueden importar de este módulo.
 
-`shared/`, a nivel de `lib/`, es el kernel compartido y no contiene lógica de
-negocio de ningún módulo.
+`core/`, a nivel de `lib/`, contiene utilidades compartidas y no contiene lógica de negocio específica de ningún módulo.
 
 Regla de dependencia entre módulos: un módulo solo puede importar el
 paquete `public/` de otro módulo, nunca su `domain/`, `application/` o
@@ -138,3 +142,14 @@ equipo propio claramente distinto al resto, corresponde abrir un ADR 0002
 que evalúe extraerlo del monolito, usando el límite ya definido por su
 carpeta `public/` como punto de corte natural — no como reemplazo de esta
 decisión, sino como su evolución esperada.
+
+## Trazabilidad con aspectos y escenarios
+
+Esta decisión se relaciona directamente con los aspectos y escenarios definidos por el equipo:
+
+- [AS-01 Disponibilidad](../aspectos.md#aspectos-de-calidad-declarados---lostvault) → [Escenario 1](../arc42/10_requisitos_calidad.md#escenario-1--disponibilidad)
+- [AS-02 Usabilidad](../aspectos.md#aspectos-de-calidad-declarados---lostvault) → [Escenario 2](../arc42/10_requisitos_calidad.md#escenario-2--usabilidad)
+- [AS-03 Seguridad](../aspectos.md#aspectos-de-calidad-declarados---lostvault) → [Escenario 3](../arc42/10_requisitos_calidad.md#escenario-3--seguridad)
+- [AS-04 Rendimiento](../aspectos.md#aspectos-de-calidad-declarados---lostvault) → [Escenario 4](../arc42/10_requisitos_calidad.md#escenario-4--rendimiento)
+
+Los escenarios enlazan de regreso a este ADR en `10_requisitos_calidad.md` y la estrategia de la sección 4 enlaza al ADR desde cada fila.

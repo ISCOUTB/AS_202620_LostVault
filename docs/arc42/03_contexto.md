@@ -8,7 +8,7 @@ LostVault es una aplicación independiente que centraliza la gestión de objetos
 
 ## 2. Diagrama de contexto
 
-![C4 Nivel 1 - Diagrama de contexto de LostVault](c4_contexto.png)
+![C4 Nivel 1 - Diagrama de contexto de LostVault](../c4/c4_contexto.png)
 
 ## 3. Actores y relaciones
 
@@ -22,3 +22,8 @@ LostVault es una aplicación independiente que centraliza la gestión de objetos
 
 - El sistema no tiene sistemas externos en este nivel de contexto: solo interactúa con personas (interesados).
 - El mismo estudiante puede ejercer ambos roles (perder y encontrar objetos) en momentos distintos; se representan por separado porque el estímulo y la respuesta del sistema son diferentes en cada caso.
+
+
+## Diagrama C4
+
+El diagrama de contexto revisable está en [docs/c4/contexto.mmd](../c4/contexto.mmd) y su representación visual en [docs/c4/c4_contexto.png](../c4/c4_contexto.png).

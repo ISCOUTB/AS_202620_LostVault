@@ -18,6 +18,11 @@ Este proceso manual genera varias fricciones:
 
 Estudiantes de la universidad, tanto quienes pierden objetos como quienes los encuentran, y la oficina de objetos perdidos, que concentra toda la carga de gestión y atención de consultas.
 
+
+## Tensiones de calidad
+
+LostVault debe equilibrar **disponibilidad y seguridad**. La consulta del inventario debe mantenerse disponible sin depender de la oficina, pero la reclamación requiere controles de identidad. La solución mantiene la consulta general disponible y concentra los controles fuertes en la reclamación.
+
 ## Propuesta
 
 Una plataforma tipo "Marketplace" (similar a Facebook Marketplace), desarrollada como aplicación independiente con identidad visual de la universidad, donde:
