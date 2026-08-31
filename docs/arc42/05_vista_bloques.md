@@ -18,7 +18,7 @@ Siguiendo la decisión registrada en [ADR 0001](../adr/0001-estilo-arquitectonic
 Cada módulo se organiza internamente en las mismas cuatro subcarpetas:
 
 ```text
-lib/<modulo>/
+lib/features/<modulo>/
 ├── domain/          → entidades y reglas de negocio propias del módulo
 ├── application/     → casos de uso del módulo
 ├── infrastructure/  → persistencia y adaptadores del módulo
@@ -31,4 +31,4 @@ Un módulo solo puede importar el paquete `public/` de otro módulo. Nunca puede
 
 ## Kernel compartido
 
-`lib/shared/` contiene utilidades comunes (por ejemplo, manejo de errores, utilidades de red) y no contiene lógica de negocio de ningún módulo específico.
+`lib/core/` contiene utilidades comunes (por ejemplo, manejo de errores, utilidades de red) y no contiene lógica de negocio de ningún módulo específico.

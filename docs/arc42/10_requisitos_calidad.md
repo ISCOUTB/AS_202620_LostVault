@@ -52,7 +52,8 @@ Utilidad
 - **Entorno:** Operación normal.
 - **Respuesta:** El sistema rechaza la entrega y marca el intento para revisión.
 - **Medida:** 100 % de los intentos sin verificación válida son bloqueados automáticamente.
-- **Cómo se medirá:** pruebas automatizadas de casos válidos e inválidos; ningún caso inválido debe producir estado de reclamación autorizada.
+- **Cómo se medirá:** pruebas automatizadas de casos válidos e inválidos; ningún caso inválido debe producir estado de reclamación autorizada. La evidencia implementada está en `test/claim_object_use_case_test.dart` y `test/widget_test.dart`.
+- **Evidencia ejecutable:** `lib/features/claims/application/claim_object_use_case.dart`, recorrido manual descrito en el `README.md` y trazabilidad de AS-03 en `docs/aspectos.md`.
 - **Relación arquitectónica:** [ADR 0001](../adr/0001-estilo-arquitectonico.md).
 
 ## Escenario 4 — Rendimiento

@@ -1,0 +1,9 @@
+{
+  "name": "LostVault",
+  "short_name": "LostVault",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#6750A4",
+  "description": "Marketplace universitario de objetos perdidos y encontrados"
+}

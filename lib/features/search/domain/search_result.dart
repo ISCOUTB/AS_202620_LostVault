@@ -1,4 +1,4 @@
-import '../../objects/domain/lost_object.dart';
+import '../../objects/public/objects.dart';
 
 class SearchResult {
   const SearchResult(this.items);
