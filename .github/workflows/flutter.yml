@@ -16,3 +16,7 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+      # Esta verificación es explícita para que un cambio incompatible del
+      # contrato bloquee el merge aunque otras pruebas sigan pasando.
+      - name: Verify API consumer contract
+        run: flutter test test/api_contract_test.dart

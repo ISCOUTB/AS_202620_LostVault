@@ -37,6 +37,7 @@ web/
 
 docs/
 ├── adr/
+├── contracts/
 ├── arc42/
 └── c4/
 
@@ -168,6 +169,24 @@ Las pruebas relevantes para AS-03 son:
 
 El workflow `.github/workflows/flutter.yml` ejecuta automáticamente `flutter analyze` y `flutter test` en cada `push` y `pull_request`.
 
+## Contrato de API y compatibilidad
+
+La frontera HTTP prevista entre la aplicación cliente y el futuro proveedor de
+LostVault está definida antes de implementarlo en
+[`docs/contracts/lostvault-api.yaml`](docs/contracts/lostvault-api.yaml). El
+contrato modela el mismo flujo que ya ejecuta `ClaimObjectUseCase`: reclamar un
+objeto disponible con una sesión autenticada y una identidad válida.
+
+`test/api_contract_test.dart` es una prueba de contrato del consumidor. Lee el
+archivo OpenAPI y exige la operación, la autenticación, los campos de respuesta
+y los errores que necesita el cliente. Por tanto, retirar `verified`, cambiar
+su tipo, quitar `201`, o modificar la ruta hace fallar el pipeline. No es una
+prueba de integración: no requiere un servidor remoto ni prueba la lógica
+in-memory.
+
+La decisión sobre comunicación síncrona está en
+[`docs/adr/0002-integracion-reclamacion-api.md`](docs/adr/0002-integracion-reclamacion-api.md).
+
 > Nota de evidencia: el código y las pruebas están preparados para ejecutarse con Flutter. La evidencia de “pruebas en verde” debe registrarse después de ejecutar los comandos anteriores localmente o después de que GitHub Actions finalice correctamente.
 
 ## Trazabilidad del aspecto hasta pruebas
@@ -199,6 +218,9 @@ AS-03 Seguridad
 - `docs/c4/contexto.mmd`: C4 de contexto como código.
 - `docs/c4/c4_contexto.png`: representación visual.
 - `docs/adr/0001-estilo-arquitectonico.md`: decisión arquitectónica y trazabilidad.
+- `docs/adr/0002-integracion-reclamacion-api.md`: elección de integración para reclamar objetos.
+- `docs/contracts/lostvault-api.yaml`: contrato OpenAPI 3.1 versionado.
+- `test/api_contract_test.dart`: consumidor que verifica requisitos incompatibles.
 - `docs/ia.md`: uso de IA, aceptaciones y rechazos.
 
 ## Alcance de esta línea base

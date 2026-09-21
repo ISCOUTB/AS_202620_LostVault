@@ -1,3 +1,4 @@
+[mapa_contextos.md](https://github.com/user-attachments/files/32450810/mapa_contextos.md)
 # Mapa de Contextos — LostVault
 
 ## 1. Diagrama de contexto (relaciones confirmadas en el código)

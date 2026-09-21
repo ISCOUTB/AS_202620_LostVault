@@ -1,0 +1,111 @@
+openapi: 3.1.1
+info:
+  title: LostVault Claims API
+  version: 1.0.0
+  description: >-
+    Contrato versionado de la frontera HTTP para reclamar un objeto perdido.
+    La especificación es la fuente de verdad para el consumidor Flutter y el
+    proveedor que la implemente.
+servers:
+  - url: https://api.lostvault.example
+paths:
+  /v1/objects/{objectId}/claims:
+    post:
+      operationId: createClaim
+      summary: Solicita la reclamación de un objeto disponible.
+      description: >-
+        El proveedor identifica al usuario a partir del token y verifica su
+        identidad antes de crear la reclamación.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: objectId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '201':
+          description: Reclamación creada y verificada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Claim'
+              examples:
+                verifiedClaim:
+                  value:
+                    objectId: '1'
+                    userId: student-42
+                    verified: true
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/ObjectNotFound'
+        '409':
+          $ref: '#/components/responses/ObjectAlreadyClaimed'
+        '422':
+          $ref: '#/components/responses/IdentityNotVerified'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Claim:
+      type: object
+      additionalProperties: false
+      required:
+        - objectId
+        - userId
+        - verified
+      properties:
+        objectId:
+          type: string
+        userId:
+          type: string
+        verified:
+          type: boolean
+          const: true
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          enum:
+            - UNAUTHENTICATED
+            - OBJECT_NOT_FOUND
+            - OBJECT_ALREADY_CLAIMED
+            - IDENTITY_NOT_VERIFIED
+        message:
+          type: string
+  responses:
+    Unauthenticated:
+      description: No existe una sesión autenticada.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ObjectNotFound:
+      description: El objeto solicitado no existe.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ObjectAlreadyClaimed:
+      description: El objeto ya fue reclamado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    IdentityNotVerified:
+      description: La identidad del usuario no pudo verificarse.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
