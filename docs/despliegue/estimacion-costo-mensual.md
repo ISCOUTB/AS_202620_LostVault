@@ -76,13 +76,5 @@ Render o GitHub Pages para el sitio estático.
 - Redundancia de conocimiento: por confirmar cuántas personas del equipo saben
   redesplegar el sistema (riesgo de sección 11 de arc42 si es solo una).
 
-## 4. Pendientes a resolver con el equipo antes de cerrar esta evidencia
 
-1. Confirmar con el laboratorio si el servidor es accesible desde fuera de la red
-   de la universidad — condición no negociable para la Evidencia S8.
-2. Validar los supuestos de volumen (500 usuarios, 10 búsquedas/mes) contra un
-   número más realista para la población de la UTB.
-3. Si finalmente se usa una alternativa gestionada en vez del servidor del
-   laboratorio, verificar su capa gratuita vigente en el momento del despliegue y
-   registrar esa verificación en el ADR correspondiente.
 
