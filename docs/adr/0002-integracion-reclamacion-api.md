@@ -65,9 +65,13 @@ ADR adicional.
   instante.
 - El cliente debe mostrar y permitir reintentar errores de red o de servidor;
   esos fallos no se confunden con los errores de negocio `401/404/409/422`.
-- La implementación actual sigue siendo in-memory: este ADR define la
-  frontera que deberá respetar el proveedor HTTP cuando se construya, no
-  declara que el servicio remoto ya esté desplegado.
+- La implementación del proveedor sigue siendo in-memory (sin base de datos
+  persistente): este ADR define la frontera HTTP que ese proveedor respeta.
+  El servicio ya está desplegado (ver
+  [ADR 0003](0003-plataforma-despliegue-vercel.md) y
+  [arc42 §7](../arc42/07_vista_despliegue.md)), pero el estado en memoria no
+  sobrevive entre invocaciones de la función serverless — una limitación de
+  la plataforma, no del contrato aquí definido.
 
 ## Trazabilidad
 
