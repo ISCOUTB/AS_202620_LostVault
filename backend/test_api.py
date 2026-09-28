@@ -47,7 +47,7 @@ def schema(name):
     return Draft202012Validator(spec["components"]["schemas"][name])
 
 
-# ---- health y listado ------------------------------------------------------
+#health y listado 
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
@@ -73,7 +73,7 @@ def test_metrics_groups_by_route_template_not_raw_path(client):
     assert not any(k.startswith("/v1/objects/x") for k in data)
 
 
-# ---- reclamación: un test por respuesta del contrato ----------------------
+#reclamación: un test por respuesta del contrato
 def test_claim_201_and_matches_contract_schema(client):
     r = client.post("/v1/objects/obj-001/claims", headers=auth())
     assert r.status_code == 201
@@ -120,7 +120,7 @@ def test_claim_422_identity_not_verified(client):
     assert main._objects["obj-001"]["status"] == "available"
 
 
-# ---- logs estructurados ------------------------------------------------------
+#logs estructurados 
 def test_request_log_is_structured_json(client, caplog):
     with caplog.at_level(logging.INFO, logger="lostvault"):
         client.get("/health")
