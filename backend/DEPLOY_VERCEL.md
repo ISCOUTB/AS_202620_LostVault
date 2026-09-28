@@ -38,20 +38,6 @@ El backend FastAPI de LostVault se encuentra desplegado y operativo en **Vercel*
 | `JWT_SECRET` | Configurada | Secreto criptográfico para firma y validación de tokens JWT (HS256). Es obligatoria durante el arranque (`lifespan`). |
 | `LOG_LEVEL` | `INFO` (por defecto) | Nivel de logging estructurado en JSON. |
 
----
 
-## 4. Cómo redesplegar cambios
 
-### Desde la Terminal (Vercel CLI)
-Desde la carpeta `backend`:
-```powershell
-npx vercel --prod
-```
 
-### Desde GitHub (CI/CD Automático)
-Si deseas conectar el proyecto directamente a tu repositorio de GitHub:
-1. En el dashboard de Vercel ([vercel.com](https://vercel.com)), ingresa al proyecto **`backend`**.
-2. Ve a **Settings** -> **Git**.
-3. Conecta el repositorio **`ISCOUTB/AS_202620_LostVault`**.
-4. Asegúrate de que el **Root Directory** esté configurado como `backend`.
-5. Cada `git push` a la rama `main` generará un despliegue automático a producción.
