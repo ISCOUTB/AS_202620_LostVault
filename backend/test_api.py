@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator
 import main
 
 CONTRACT = (
-    Path(__file__).resolve().parents[2] / "docs" / "contracts" / "lostvault-api.yaml"
+    Path(__file__).resolve().parents[1] / "docs" / "contracts" / "lostvault-api.yaml"
 )
 
 
