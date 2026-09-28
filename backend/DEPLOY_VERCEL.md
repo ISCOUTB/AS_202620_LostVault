@@ -38,6 +38,11 @@ El backend FastAPI de LostVault se encuentra desplegado y operativo en **Vercel*
 | `JWT_SECRET` | Configurada | Secreto criptográfico para firma y validación de tokens JWT (HS256). Es obligatoria durante el arranque (`lifespan`). |
 | `LOG_LEVEL` | `INFO` (por defecto) | Nivel de logging estructurado en JSON. |
 
+2. Documentación Interactiva (Swagger UI)
+Permite visualizar todas las operaciones y probar los endpoints interactivamente desde el navegador:
+
+ https://backend-nu-self-91.vercel.app/docs
+
 
 
 
