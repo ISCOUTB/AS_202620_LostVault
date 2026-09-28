@@ -8,27 +8,69 @@ on:
 jobs:
   sonarqube:
     name: SonarQube
-    runs-on: windows-latest
+    # ubuntu-latest en vez de windows-latest: no hay ninguna dependencia de
+    # Windows en este job y ubuntu es más rápido/barato en minutos de CI.
+    runs-on: ubuntu-latest
+    # GitHub no expone los secrets del repositorio (como SONAR_TOKEN) a
+    # workflows disparados por pull_request cuando el PR viene de un fork
+    # (p. ej. "Fausto-4:main") — es una protección de seguridad, no un bug.
+    # Si este job corriera igual, sonar-scanner fallaría con exit code 1 por
+    # no tener token. Por eso se salta en PRs desde forks y solo corre en
+    # push a main o en PRs desde ramas dentro de este mismo repositorio.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
 
-      # Setup Flutter
+      # --- Flutter: build + cobertura (lib/) ---
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
 
-      # Get dependencies
       - name: Get dependencies
         run: flutter pub get
+
+      # La cobertura de Dart (coverage/lcov.info) se genera aquí para que
+      # Sonar pueda importarla vía sonar.dart.coverage.reportPaths.
+      - name: Flutter test with coverage
+        run: flutter test --coverage
 
       # The analysis requires to retrieve dependencies and build successfully
       - name: Build
         run: flutter build web
 
+      # --- Backend (Python): cobertura para sonar.python.coverage.reportPaths ---
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+
+      - name: Backend tests with coverage
+        env:
+          JWT_SECRET: ci-test-secret-0123456789abcdef
+        run: |
+          pytest backend/test_api.py \
+            --cov=backend --cov-report=xml:backend/coverage.xml --cov-report=term
+
+      # --- Análisis SonarCloud ---
       - name: SonarQube Scan
+        id: sonarqube
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # Hace que el pipeline falle explícitamente si el Quality Gate de
+      # SonarCloud queda en rojo, en vez de solo publicar el resultado en
+      # el dashboard sin bloquear nada.
+      - name: SonarQube Quality Gate check
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
