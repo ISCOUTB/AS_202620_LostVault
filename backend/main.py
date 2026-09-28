@@ -19,6 +19,7 @@ from statistics import quantiles
 
 import jwt
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 
@@ -62,6 +63,15 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="LostVault API", version="1.0.0", lifespan=lifespan)
+
+# Soporte de CORS para clientes web (p. ej. Flutter Web) y móviles
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class ApiProblem(Exception):
@@ -148,6 +158,16 @@ def current_user_id(request: Request) -> str:
     except jwt.PyJWTError:
         raise ApiProblem(401, "UNAUTHENTICATED", "Token inválido o expirado.")
     return str(payload["sub"])
+
+
+@app.get("/")
+async def root():
+    return {
+        "name": "LostVault API",
+        "status": "online",
+        "docs": "/docs",
+        "health": "/health",
+    }
 
 
 @app.get("/health")

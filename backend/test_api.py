@@ -140,3 +140,25 @@ def test_logs_never_contain_the_token(client, caplog):
         main.JsonFormatter().format(r) for r in caplog.records if r.name == "lostvault"
     )
     assert token() not in dumped
+
+
+def test_root_endpoint(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["name"] == "LostVault API"
+    assert data["status"] == "online"
+    assert data["docs"] == "/docs"
+
+
+def test_cors_headers_present(client):
+    r = client.options(
+        "/health",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert r.status_code == 200
+    assert r.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
