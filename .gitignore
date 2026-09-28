@@ -1,1 +1,19 @@
 /build
+.dart_tool/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.pytest_cache/
+
+# Secrets & environment
+.env
+.env.*
+!.env.example
+
+# Vercel
+.vercel

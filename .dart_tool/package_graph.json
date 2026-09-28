@@ -12,7 +12,8 @@
       "devDependencies": [
         "flutter_lints",
         "flutter_test",
-        "path"
+        "path",
+        "yaml"
       ]
     },
     {
@@ -219,6 +220,15 @@
       "name": "vm_service",
       "version": "15.3.0",
       "dependencies": []
+    },
+    {
+      "name": "yaml",
+      "version": "3.1.4",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner"
+      ]
     }
   ],
   "configVersion": 1
