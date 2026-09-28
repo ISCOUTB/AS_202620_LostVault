@@ -13,35 +13,41 @@ import sys
 import threading
 import time
 import uuid
+from collections import deque
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from statistics import quantiles
 
 import jwt
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-# Logs estructurados (una línea JSON por evento, a stdout)
-# Aquí convierto cada log en un objeto JSON para que todos los eventos
-        # tengan la misma estructura y sea más fácil analizarlos posteriormente.
+
+
+# Logs en JSON, una línea por evento
 class JsonFormatter(logging.Formatter):
-    def format(self, record: logging.LogRecord) -> str:
-        entry = {
-            "ts": datetime.now(timezone.utc).isoformat(timespec="milliseconds"),
+    FIELDS = ("request_id", "endpoint", "method", "status_code", "duration_ms", "event")
+
+    def format(self, record):
+        payload = {
+            "time": self.formatTime(record),
             "level": record.levelname,
-            "logger": record.name,
-            "msg": record.getMessage(),
+            "message": record.getMessage(),
         }
-        entry.update(getattr(record, "fields", {}))
-        return json.dumps(entry, ensure_ascii=False)
+        for key in self.FIELDS:
+            if hasattr(record, key):
+                payload[key] = getattr(record, key)
+        return json.dumps(payload, ensure_ascii=False)
 
 
 logger = logging.getLogger("lostvault")
 if not logger.handlers:
-    _handler = logging.StreamHandler(sys.stdout)
-    _handler.setFormatter(JsonFormatter())
-    logger.addHandler(_handler)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter(JsonFormatter())
+    logger.addHandler(handler)
     logger.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
-  #Configuración y secretos: solo desde variables de entorno, sin defaults
+
+
 def jwt_secret() -> str:
+    # El secreto viene solo del entorno, nunca del código
     secret = os.environ.get("JWT_SECRET")
     if not secret:
         raise RuntimeError("JWT_SECRET no está definido en el entorno.")
@@ -50,16 +56,17 @@ def jwt_secret() -> str:
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    jwt_secret()  # falla al arrancar si falta el secreto, no en la primera petición
-    logger.info("startup", extra={"fields": {"event": "startup"}})
+    jwt_secret()  # si falta, falla al arrancar y no en la primera petición
+    logger.info("startup", extra={"event": "startup"})
     yield
 
 
 app = FastAPI(title="LostVault API", version="1.0.0", lifespan=lifespan)
 
 
- #Errores con el formato Problem del contrato: {"code": ..., "message": ...}
 class ApiProblem(Exception):
+    """Error con el formato {code, message} que pide el contrato."""
+
     def __init__(self, status: int, code: str, message: str):
         self.status, self.code, self.message = status, code, message
 
@@ -67,10 +74,52 @@ class ApiProblem(Exception):
 @app.exception_handler(ApiProblem)
 async def api_problem_handler(_: Request, exc: ApiProblem):
     return JSONResponse(
-        status_code=exc.status,
-        content={"code": exc.code, "message": exc.message},
+        status_code=exc.status, content={"code": exc.code, "message": exc.message}
     )
-# Dominio en memoria (espejo de LostObject / Claim / verificación en Dart)
+
+
+# Latencias recientes por endpoint, para calcular el p95
+_WINDOW_SIZE = 500
+_durations_by_endpoint: dict[str, deque] = {}
+
+
+def _p95(endpoint: str):
+    bucket = _durations_by_endpoint.get(endpoint)
+    if not bucket or len(bucket) < 2:
+        return None
+    return round(quantiles(list(bucket), n=100)[94], 2)
+
+
+@app.middleware("http")
+async def measure_latency(request: Request, call_next):
+    request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+    start = time.perf_counter()
+    status = 500
+    try:
+        response = await call_next(request)
+        status = response.status_code
+        response.headers["X-Request-ID"] = request_id
+        return response
+    finally:
+        duration_ms = (time.perf_counter() - start) * 1000
+        route = request.scope.get("route")
+        # Se usa la ruta con {object_id}, no la real, para no crear un grupo por objeto
+        endpoint = getattr(route, "path", request.url.path)
+        bucket = _durations_by_endpoint.setdefault(endpoint, deque(maxlen=_WINDOW_SIZE))
+        bucket.append(duration_ms)
+        logger.info(
+            "request",
+            extra={
+                "request_id": request_id,
+                "endpoint": endpoint,
+                "method": request.method,
+                "status_code": status,
+                "duration_ms": round(duration_ms, 2),
+            },
+        )
+
+
+# Datos en memoria
 _lock = threading.Lock()
 _objects: dict[str, dict] = {
     "obj-001": {
@@ -84,13 +133,12 @@ _claims: list[dict] = []
 
 
 def verify_identity(user_id: str) -> bool:
-    # Igual que InMemoryIdentityVerificationService: válida si el id no es vacío.
+    # Igual que en la app Flutter: es válida si el id no viene vacío
     return bool(user_id.strip())
 
 
 def current_user_id(request: Request) -> str:
-    header = request.headers.get("authorization", "")
-    scheme, _, token = header.partition(" ")
+    scheme, _, token = request.headers.get("authorization", "").partition(" ")
     if scheme.lower() != "bearer" or not token:
         raise ApiProblem(401, "UNAUTHENTICATED", "Debes iniciar sesión.")
     try:
@@ -100,59 +148,49 @@ def current_user_id(request: Request) -> str:
     except jwt.PyJWTError:
         raise ApiProblem(401, "UNAUTHENTICATED", "Token inválido o expirado.")
     return str(payload["sub"])
-# Middleware: un log JSON por request (endpoint, status, duration_ms)
-@app.middleware("http")
-async def access_log(request: Request, call_next):
-    request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
-    started = time.perf_counter()
-    status = 500
-    try:
-        response = await call_next(request)
-        status = response.status_code
-        response.headers["X-Request-ID"] = request_id
-        return response
-    finally:
-        route = request.scope.get("route")
-        logger.info(
-            "request",
-            extra={
-                "fields": {
-                    "request_id": request_id,
-                    "method": request.method,
-                    "path": request.url.path,
-                    "endpoint": getattr(route, "path", request.url.path),
-                    "status": status,
-                    "duration_ms": round((time.perf_counter() - started) * 1000, 2),
-                }
-            },
-        )
-# Endpoints
+
+
 @app.get("/health")
 async def health():
+    # TODO: cuando haya base de datos, revisarla aquí y devolver 503 si falla
     return {"status": "ok"}
 
 
-@app.get("/v1/objects")
-async def list_objects(status: str | None = None):
+@app.get("/metrics")
+async def metrics():
+    return JSONResponse(
+        content={
+            endpoint: {"p95_ms": _p95(endpoint), "samples": len(bucket)}
+            for endpoint, bucket in _durations_by_endpoint.items()
+        }
+    )
+
+
+@app.get("/objects")
+async def search_objects(status: str | None = None, q: str | None = None):
     with _lock:
         items = list(_objects.values())
     if status:
         items = [o for o in items if o["status"] == status]
-    return items
+    if q:
+        needle = q.lower()
+        items = [
+            o for o in items
+            if needle in o["title"].lower() or needle in o["description"].lower()
+        ]
+    return {"items": items, "page": 1, "pageSize": 20, "total": len(items)}
 
 
 @app.post("/v1/objects/{object_id}/claims", status_code=201)
 async def create_claim(object_id: str, request: Request):
+    # Mismo orden que ClaimObjectUseCase: sesión, objeto, disponibilidad, identidad
     user_id = current_user_id(request)
-
     with _lock:
         obj = _objects.get(object_id)
         if obj is None:
             raise ApiProblem(404, "OBJECT_NOT_FOUND", "El objeto solicitado no existe.")
         if obj["status"] != "available":
-            raise ApiProblem(
-                409, "OBJECT_ALREADY_CLAIMED", "El objeto ya fue reclamado."
-            )
+            raise ApiProblem(409, "OBJECT_ALREADY_CLAIMED", "El objeto ya fue reclamado.")
         if not verify_identity(user_id):
             raise ApiProblem(
                 422, "IDENTITY_NOT_VERIFIED", "La identidad no pudo verificarse."
