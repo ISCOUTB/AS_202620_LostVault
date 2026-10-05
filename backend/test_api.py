@@ -162,3 +162,14 @@ def test_cors_headers_present(client):
     assert r.status_code == 200
     assert r.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
+def test_p95_calculation_with_known_values(client):
+    from collections import deque
+
+    main._durations_by_endpoint["/objects"] = deque(range(1, 101))
+    data = client.get("/metrics").json()["/objects"]
+    assert data["p95_ms"] == 95.95
+    assert data["objective_ms"] == 2000 and data["met"] is True
+
+    main._durations_by_endpoint["/objects"] = deque([3000] * 10)
+    data = client.get("/metrics").json()["/objects"]
+    assert data["p95_ms"] == 3000 and data["met"] is False

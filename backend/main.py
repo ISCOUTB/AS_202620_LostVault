@@ -92,6 +92,10 @@ async def api_problem_handler(_: Request, exc: ApiProblem):
 _WINDOW_SIZE = 500
 _durations_by_endpoint: dict[str, deque] = {}
 
+# Objetivo de p95 (ms) por endpoint, tomado del Escenario 4 de calidad
+# (docs/arc42/10_requisitos_calidad.md): búsqueda con p95 <= 2 s.
+OBJECTIVES_MS = {"/objects": 2000}
+
 
 def _p95(endpoint: str):
     bucket = _durations_by_endpoint.get(endpoint)
@@ -178,12 +182,17 @@ async def health():
 
 @app.get("/metrics")
 async def metrics():
-    return JSONResponse(
-        content={
-            endpoint: {"p95_ms": _p95(endpoint), "samples": len(bucket)}
-            for endpoint, bucket in _durations_by_endpoint.items()
-        }
-    )
+    content = {}
+    for endpoint, bucket in _durations_by_endpoint.items():
+        p95 = _p95(endpoint)
+        entry = {"p95_ms": p95, "samples": len(bucket)}
+        objective = OBJECTIVES_MS.get(endpoint)
+        if objective is not None:
+            # Ligar la medición al escenario: objetivo y si se cumple
+            entry["objective_ms"] = objective
+            entry["met"] = None if p95 is None else p95 <= objective
+        content[endpoint] = entry
+    return JSONResponse(content=content)
 
 
 @app.get("/objects")
