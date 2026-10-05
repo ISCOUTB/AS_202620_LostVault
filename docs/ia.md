@@ -177,3 +177,47 @@ con PostgreSQL y quedó desactualizado frente al despliegue en Vercel. Los
 supuestos de volumen (≈500 usuarios) son estimados no validados con el equipo.
 La IA no pudo abrir la URL desplegada ni ver el estado de los checks en GitHub
 Actions.
+
+## Registro S9 — 2026-10-04
+
+Se utilizó IA para completar la cadena de la métrica de rendimiento (ligarla
+explícitamente al escenario de calidad), para auditar el backend generado en S8 contra
+las reglas de propiedad de datos de la semana 6, y para verificar lo que el modelo trajo
+consigo (dependencias y credenciales).
+
+Trabajo realizado y motivo:
+
+- Se agregó `OBJECTIVES_MS` y se modificó `GET /metrics` en `backend/main.py` para que la
+  respuesta de `/objects` muestre explícitamente el objetivo del escenario de calidad
+  (2000 ms) y si se cumple (`met: true/false`), en vez de mostrar solo el p95 suelto. Se
+  hizo porque la evidencia pide una medición ligada al escenario, no solo un número.
+- Se agregó `test_p95_calculation_with_known_values` en `backend/test_api.py`. El test
+  existente (`test_metrics_groups_by_route_template_not_raw_path`) solo comprobaba que
+  hubiera datos y que el p95 no fuera `None`; no verificaba el cálculo en sí, así que si
+  alguien rompía la fórmula del percentil, ningún test lo habría detectado. El test nuevo
+  alimenta el cálculo con valores fijos y verifica el resultado exacto.
+- Se auditó `backend/main.py` contra `docs/ddd/mapa_contextos.md`. Se detectó que el
+  backend no reproduce la separación modular del ADR 0001: el endpoint de reclamación
+  escribe directamente sobre el diccionario `_objects` sin pasar por ninguna frontera
+  equivalente a `public/`. Se registró como no conformidad NC6 en
+  `docs/ddd/auditoria_backend.md`, con el fragmento de código exacto y la corrección
+  propuesta (separar el archivo en al menos dos módulos).
+- Se verificaron las tres dependencias de `backend/requirements.txt` contra PyPI:
+  `fastapi==0.141.1`, `uvicorn==0.54.0` y `PyJWT==2.7.0` existen y corresponden a
+  versiones reales publicadas por los proyectos legítimos. Ninguna es una dependencia
+  inventada por el modelo.
+- Se revisaron `backend/main.py` y `backend/Dockerfile` en busca de credenciales en texto
+  plano. El secreto JWT se obtiene solo de una variable de entorno y la aplicación falla
+  al arrancar si no está definida; no se encontró ningún valor hardcodeado.
+
+Aceptado: la corrección de `/metrics` con `objective_ms` y `met`, el test del cálculo del
+p95, y el hallazgo NC6 con su plan de corrección.
+
+Rechazado: aplicar de inmediato la corrección de NC6 (separar `main.py` en módulos), por
+no ser código propio del integrante que hizo la auditoría; queda documentada para que el
+equipo decida si se corrige antes de la entrega o se deja como hallazgo.
+
+Limitaciones: `PyJWT==2.7.0` es una versión real pero de 2023, bastante más vieja que
+`fastapi` y `uvicorn`; no se verificó si tiene vulnerabilidades conocidas pendientes de
+parche. La auditoría de erosión cubrió solo el flujo de reclamación (`create_claim`); no
+se revisó el resto de `main.py` en busca de otros cruces de frontera.
