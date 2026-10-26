@@ -163,6 +163,10 @@ def backoff_delay(attempts: int, rng: Callable[[], float] = random.random) -> fl
     return base * (1 + JITTER * (2 * rng() - 1))
 
 
+def _object_id(row: OutboxRow) -> str:
+    return row.message.get("data", {}).get("objectId", "")
+
+
 @dataclass
 class Counters:
     enqueued: int = 0
@@ -185,52 +189,64 @@ class Publisher:
         now = self.clock()
         summary = {"published": 0, "retried": 0, "dead_lettered": 0, "skipped": 0}
         blocked_objects: set[str] = set()
-        rows = sorted(
-            (r for r in self.outbox.rows() if r.pending),
-            key=lambda r: (r.message.get("data", {}).get("objectId", ""), r.message.get("occurredAt", 0)),
-        )
-        for row in rows:
-            object_id = row.message.get("data", {}).get("objectId", "")
+        for row in self._pending_in_order():
+            object_id = _object_id(row)
+            waiting = row.next_attempt_at > now
             # Orden por objeto: si un evento de este objeto falló, no se sigue con los demás.
-            if object_id in blocked_objects or row.next_attempt_at > now:
+            if waiting or object_id in blocked_objects:
                 summary["skipped"] += 1
-                if row.next_attempt_at > now:
+                if waiting:
                     blocked_objects.add(object_id)
                 continue
-            row.attempts += 1
-            ctx = {"event_id": row.event_id,
-                   "correlation_id": row.message.get("correlationId"),
-                   "attempt": row.attempts}
-            try:
-                outcome = self.consumer.handle(row.message)
-            except PermanentError as exc:
-                self._dead_letter(row, str(exc), now, ctx)
-                summary["dead_lettered"] += 1
-                continue
-            except TransientError as exc:
-                row.last_error = str(exc)
-                if row.attempts >= MAX_ATTEMPTS:
-                    self._dead_letter(row, f"agotó {MAX_ATTEMPTS} intentos: {exc}", now, ctx)
-                    summary["dead_lettered"] += 1
-                else:
-                    row.next_attempt_at = now + backoff_delay(row.attempts, self.rng)
-                    self.counters.retried += 1
-                    summary["retried"] += 1
-                    logger.warning(
-                        "publisher_retry_scheduled",
-                        extra={"event": "publisher_retry_scheduled", **ctx,
-                               "retry_in_s": round(row.next_attempt_at - now, 1)},
-                    )
+            if self._deliver(row, now, summary):
                 blocked_objects.add(object_id)
-                continue
-            # Se marca published_at DESPUÉS de que el consumidor confirma.
-            row.published_at = now
-            if outcome == "duplicate":
-                self.counters.duplicates_discarded += 1
-            self.counters.published += 1
-            summary["published"] += 1
-            logger.info("publisher_published", extra={"event": "publisher_published", **ctx})
         return summary
+
+    def _pending_in_order(self) -> list[OutboxRow]:
+        return sorted(
+            (r for r in self.outbox.rows() if r.pending),
+            key=lambda r: (_object_id(r), r.message.get("occurredAt", 0)),
+        )
+
+    def _deliver(self, row: OutboxRow, now: float, summary: dict) -> bool:
+        """Un intento de entrega. Devuelve True si el objeto debe esperar (fallo recuperable)."""
+        row.attempts += 1
+        ctx = {"event_id": row.event_id,
+               "correlation_id": row.message.get("correlationId"),
+               "attempt": row.attempts}
+        try:
+            outcome = self.consumer.handle(row.message)
+        except PermanentError as exc:
+            self._dead_letter(row, str(exc), now, ctx)
+            summary["dead_lettered"] += 1
+            return False
+        except TransientError as exc:
+            self._schedule_retry(row, exc, now, ctx, summary)
+            return True
+        # Se marca published_at DESPUÉS de que el consumidor confirma.
+        row.published_at = now
+        if outcome == "duplicate":
+            self.counters.duplicates_discarded += 1
+        self.counters.published += 1
+        summary["published"] += 1
+        logger.info("publisher_published", extra={"event": "publisher_published", **ctx})
+        return False
+
+    def _schedule_retry(self, row: OutboxRow, exc: Exception, now: float,
+                        ctx: dict, summary: dict) -> None:
+        row.last_error = str(exc)
+        if row.attempts >= MAX_ATTEMPTS:
+            self._dead_letter(row, f"agotó {MAX_ATTEMPTS} intentos: {exc}", now, ctx)
+            summary["dead_lettered"] += 1
+            return
+        row.next_attempt_at = now + backoff_delay(row.attempts, self.rng)
+        self.counters.retried += 1
+        summary["retried"] += 1
+        logger.warning(
+            "publisher_retry_scheduled",
+            extra={"event": "publisher_retry_scheduled", **ctx,
+                   "retry_in_s": round(row.next_attempt_at - now, 1)},
+        )
 
     def _dead_letter(self, row: OutboxRow, reason: str, now: float, ctx: dict) -> None:
         row.failed_at = now

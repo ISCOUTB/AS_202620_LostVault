@@ -118,9 +118,11 @@ def test_incompatible_message_goes_to_dead_letter_without_retries(mutate):
     mutate(m)
     h.outbox.add(m)
     summary = h.publisher.run_once()
-    assert summary["dead_lettered"] == 1 and summary["retried"] == 0
+    assert summary["dead_lettered"] == 1
+    assert summary["retried"] == 0
     row = h.publisher.dead_letters()[0]
-    assert row.attempts == 1 and h.sent == []
+    assert row.attempts == 1
+    assert h.sent == []
 
 
 # 2/3. Duplicados ------------------------------------------------------------
@@ -129,7 +131,8 @@ def test_duplicate_delivery_has_a_single_effect():
     m = msg()
     assert h.consumer.handle(m) == "processed"
     assert h.consumer.handle(m) == "duplicate"   # mismo eventId entregado dos veces
-    assert h.sent == [m["eventId"]] and h.consumer.duplicates == 1
+    assert h.sent == [m["eventId"]]
+    assert h.consumer.duplicates == 1
 
 
 def test_publisher_crash_between_send_and_mark_resends_but_effect_is_once():
@@ -179,7 +182,8 @@ def test_recoverable_failure_is_retried_with_backoff_and_then_delivered():
 
     h.clock.advance(60)
     assert h.publisher.run_once()["published"] == 1           # intento 3 funciona
-    assert row.attempts == 3 and row.published_at is not None
+    assert row.attempts == 3
+    assert row.published_at is not None
     assert h.sent == [m["eventId"]]                           # un solo envío efectivo
 
 
@@ -198,7 +202,8 @@ def test_exhausted_retries_move_message_to_dead_letter():
         h.publisher.run_once()
         h.clock.advance(ob.MAX_DELAY_SECONDS * 2)
     dead = h.publisher.dead_letters()
-    assert len(dead) == 1 and dead[0].attempts == ob.MAX_ATTEMPTS
+    assert len(dead) == 1
+    assert dead[0].attempts == ob.MAX_ATTEMPTS
     assert "agotó" in dead[0].last_error
     assert h.publisher.counters.dead_lettered == 1
     h.publisher.run_once()                # una vuelta más no lo reintenta
@@ -213,7 +218,8 @@ def test_failed_event_blocks_later_events_of_same_object_but_not_other_objects()
     for m in (first, second, other):
         h.outbox.add(m)
     summary = h.publisher.run_once()
-    assert summary["retried"] == 1 and summary["published"] == 1
+    assert summary["retried"] == 1
+    assert summary["published"] == 1
     assert h.sent == [other["eventId"]]          # obj-B pasó; obj-A espera su turno
     h.clock.advance(30)
     h.publisher.run_once()
@@ -263,7 +269,11 @@ def test_log_follows_message_from_request_to_consumer(client, caplog):
 def test_metrics_expose_outbox_counters(client):
     client.post("/v1/objects/obj-001/claims", headers=auth())
     before = client.get("/metrics").json()["outbox"]
-    assert before["pending"] == 1 and before["enqueued"] == 1 and before["published"] == 0
+    assert before["pending"] == 1
+    assert before["enqueued"] == 1
+    assert before["published"] == 0
     main._publisher.run_once()
     after = client.get("/metrics").json()["outbox"]
-    assert after["pending"] == 0 and after["published"] == 1 and after["dead_lettered"] == 0
+    assert after["pending"] == 0
+    assert after["published"] == 1
+    assert after["dead_lettered"] == 0

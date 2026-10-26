@@ -200,8 +200,27 @@ _notifier = ob.OfficeNotifier(send=lambda m: _send_office_notice(m))
 _publisher = ob.Publisher(outbox=_outbox, consumer=_notifier, clock=lambda: _now())
 
 
+def _enqueue_claim_created(claim: dict, request_id: str | None, now: float) -> None:
+    message = ob.build_claim_created(claim, request_id, now)
+    if not _outbox.add(message):
+        return
+    _publisher.counters.enqueued += 1
+    logger.info(
+        "claim_event_enqueued",
+        extra={"event": "claim_event_enqueued", "event_id": message["eventId"],
+               "correlation_id": message["correlationId"],
+               "request_id": message["correlationId"]},
+    )
+
+
 def _now() -> float:
     return time.time()  # punto de inyección para probar el vencimiento
+
+
+def _remember_idempotent(user_id: str, key: str | None, object_id: str,
+                         claim: dict, now: float) -> None:
+    if key is not None:
+        _idempotency[(user_id, key)] = {"objectId": object_id, "body": claim, "at": now}
 
 
 def _purge_expired_keys(now: float) -> None:
@@ -348,17 +367,6 @@ async def create_claim(object_id: str, request: Request):
         _claims.append(claim)
         obj["status"] = "claimed"
         # Mismo "commit" que la reclamación: no hay reclamación sin evento.
-        message = ob.build_claim_created(
-            claim, getattr(request.state, "request_id", None), now
-        )
-        if _outbox.add(message):
-            _publisher.counters.enqueued += 1
-            logger.info(
-                "claim_event_enqueued",
-                extra={"event": "claim_event_enqueued", "event_id": message["eventId"],
-                       "correlation_id": message["correlationId"],
-                       "request_id": message["correlationId"]},
-            )
-        if key is not None:
-            _idempotency[(user_id, key)] = {"objectId": object_id, "body": claim, "at": now}
+        _enqueue_claim_created(claim, getattr(request.state, "request_id", None), now)
+        _remember_idempotent(user_id, key, object_id, claim, now)
     return claim
