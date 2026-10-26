@@ -25,10 +25,16 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+import outbox as ob
+
 
 # Logs en JSON, una línea por evento
 class JsonFormatter(logging.Formatter):
-    FIELDS = ("request_id", "endpoint", "method", "status_code", "duration_ms", "event")
+    FIELDS = (
+        "request_id", "endpoint", "method", "status_code", "duration_ms", "event",
+        # Seguimiento de un mensaje de productor a consumidor (ClaimCreated)
+        "event_id", "correlation_id", "attempt", "retry_in_s", "reason",
+    )
 
     def format(self, record):
         payload = {
@@ -110,6 +116,7 @@ def _p95(endpoint: str):
 @app.middleware("http")
 async def measure_latency(request: Request, call_next):
     request_id = request.headers.get("x-request-id") or uuid.uuid4().hex
+    request.state.request_id = request_id  # el productor lo copia a correlationId
     start = time.perf_counter()
     status = 500
     try:
@@ -173,6 +180,26 @@ IDEMPOTENCY_KEY_MAX_LENGTH = 255
 _idempotency: dict[tuple[str, str], dict] = {}
 
 
+# Aviso asíncrono a la oficina (ADR 0007, contrato claim-created.asyncapi.yaml).
+# El productor solo escribe en el outbox, dentro del mismo `with _lock:` que la
+# reclamación; el envío ocurre después, en Publisher.run_once() (trabajo programado).
+_outbox = ob.Outbox()
+
+
+def _send_office_notice(message: dict) -> None:
+    # Efecto externo (correo a la oficina). Sin proveedor real todavía: solo se
+    # registra. Las pruebas lo reemplazan para simular fallos.
+    logger.info(
+        "office_notice_sent",
+        extra={"event": "office_notice_sent", "event_id": message["eventId"],
+               "correlation_id": message["correlationId"]},
+    )
+
+
+_notifier = ob.OfficeNotifier(send=lambda m: _send_office_notice(m))
+_publisher = ob.Publisher(outbox=_outbox, consumer=_notifier, clock=lambda: _now())
+
+
 def _now() -> float:
     return time.time()  # punto de inyección para probar el vencimiento
 
@@ -231,6 +258,20 @@ async def metrics():
             entry["objective_ms"] = objective
             entry["met"] = None if p95 is None else p95 <= objective
         content[endpoint] = entry
+    rows = _outbox.rows()
+    c = _publisher.counters
+    content["outbox"] = {
+        "pending": sum(1 for r in rows if r.pending),
+        "enqueued": c.enqueued,
+        "published": c.published,
+        "retried": c.retried,
+        "dead_lettered": c.dead_lettered,
+        "duplicates_discarded": c.duplicates_discarded,
+        "oldest_pending_age_s": max(
+            (round(_now() - r.message["occurredAt"], 1) for r in rows if r.pending),
+            default=0,
+        ),
+    }
     return JSONResponse(content=content)
 
 
@@ -306,6 +347,18 @@ async def create_claim(object_id: str, request: Request):
         claim = {"objectId": object_id, "userId": user_id, "verified": True}
         _claims.append(claim)
         obj["status"] = "claimed"
+        # Mismo "commit" que la reclamación: no hay reclamación sin evento.
+        message = ob.build_claim_created(
+            claim, getattr(request.state, "request_id", None), now
+        )
+        if _outbox.add(message):
+            _publisher.counters.enqueued += 1
+            logger.info(
+                "claim_event_enqueued",
+                extra={"event": "claim_event_enqueued", "event_id": message["eventId"],
+                       "correlation_id": message["correlationId"],
+                       "request_id": message["correlationId"]},
+            )
         if key is not None:
             _idempotency[(user_id, key)] = {"objectId": object_id, "body": claim, "at": now}
     return claim

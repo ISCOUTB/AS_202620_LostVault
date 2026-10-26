@@ -10,6 +10,7 @@ Las decisiones arquitectónicas relevantes del proyecto se documentan como ADRs 
 | [0002](../adr/0002-integracion-reclamacion-api.md) | Integración síncrona para crear una reclamación | Aceptado |
 | [0003](../adr/0003-plataforma-despliegue-vercel.md) | Plataforma de despliegue de la API — Vercel (funciones serverless) | Aceptado |
 | [000.3](../adr/000.3-despliegue-busqueda-lostvault.md) | Análisis comparativo de despliegue para búsqueda (Railway vs. GCP Cloud Functions) — ejercicio de laboratorio, no describe el sistema real desplegado | Aceptado (laboratorio) |
+| [0007](../adr/0007-aviso-reclamacion-asincrono.md) | Aviso a la oficina por evento asíncrono (outbox) vs. llamada síncrona | Aceptado (simulador) |
 | [0004](../adr/0004-no-incorporacion-componente-generativo.md) | No incorporación de un componente generativo en runtime | Aceptado |
 | [0005](../adr/0005-no-extraer-verificacion-identidad.md) | No extraer `identity_verification` a un servicio propio (todavía) — evalúa extraer vía HTTP síncrono, extraer con saga y no extraer | Aceptado |
 | [0006](../adr/0006-postgresql-fuente-de-verdad.md) | PostgreSQL gestionado como única fuente de verdad, con las invariantes en el esquema — decisión de datos más costosa de revertir (S12) | Propuesto |
