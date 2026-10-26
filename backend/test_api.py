@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from pathlib import Path
 
 import jwt
@@ -35,8 +36,9 @@ def client():
         yield c
 
 
-def token(sub="student-42"):
-    return jwt.encode({"sub": sub}, os.environ["JWT_SECRET"], algorithm="HS256")
+def token(sub="student-42", ttl_seconds=3600):
+    claims = {"sub": sub, "exp": int(time.time()) + ttl_seconds}
+    return jwt.encode(claims, os.environ["JWT_SECRET"], algorithm="HS256")
 
 
 def auth(sub="student-42"):
@@ -95,6 +97,26 @@ def test_claim_401_with_invalid_token(client):
     )
     assert r.status_code == 401
     assert r.json()["code"] == "UNAUTHENTICATED"
+
+
+def test_claim_401_with_token_without_exp(client):
+    sin_exp = jwt.encode({"sub": "student-42"}, os.environ["JWT_SECRET"], algorithm="HS256")
+    r = client.post(
+        "/v1/objects/obj-001/claims", headers={"Authorization": f"Bearer {sin_exp}"}
+    )
+    assert r.status_code == 401
+    assert r.json()["code"] == "UNAUTHENTICATED"
+    assert main._objects["obj-001"]["status"] == "available"
+
+
+def test_claim_401_with_expired_token(client):
+    vencido = token(ttl_seconds=-60)
+    r = client.post(
+        "/v1/objects/obj-001/claims", headers={"Authorization": f"Bearer {vencido}"}
+    )
+    assert r.status_code == 401
+    assert r.json()["code"] == "UNAUTHENTICATED"
+    assert main._objects["obj-001"]["status"] == "available"
 
 
 def test_claim_404_object_not_found(client):
@@ -229,12 +251,15 @@ def test_request_log_is_structured_json(client, caplog):
 
 
 def test_logs_never_contain_the_token(client, caplog):
+    secreto = token()
     with caplog.at_level(logging.INFO, logger="lostvault"):
-        client.post("/v1/objects/obj-001/claims", headers=auth())
+        client.post(
+            "/v1/objects/obj-001/claims", headers={"Authorization": f"Bearer {secreto}"}
+        )
     dumped = " ".join(
         main.JsonFormatter().format(r) for r in caplog.records if r.name == "lostvault"
     )
-    assert token() not in dumped
+    assert secreto not in dumped
 
 
 def test_root_endpoint(client):
@@ -268,3 +293,26 @@ def test_p95_calculation_with_known_values(client):
     main._durations_by_endpoint["/objects"] = deque([3000] * 10)
     data = client.get("/metrics").json()["/objects"]
     assert data["p95_ms"] == 3000 and data["met"] is False
+
+# Política de caché (docs/datos/cache.md)
+def test_objects_listing_is_cacheable_only_in_the_cdn(client):
+    r = client.get("/objects", params={"q": "termo"})
+    cache = r.headers["cache-control"]
+    assert "public" in cache
+    assert "s-maxage=30" in cache
+    assert "stale-while-revalidate=60" in cache
+    assert "max-age=0" in cache  # el navegador no guarda una segunda copia
+
+
+def test_claim_responses_are_never_cached(client):
+    ok = client.post("/v1/objects/obj-001/claims", headers=auth())
+    replay = client.post("/v1/objects/obj-001/claims", headers=auth())
+    conflict = client.post("/v1/objects/obj-001/claims", headers=auth("otro"))
+    unauthenticated = client.post("/v1/objects/obj-001/claims")
+    for r in (ok, replay, conflict, unauthenticated):
+        assert r.headers["cache-control"] == "no-store", r.status_code
+
+
+def test_health_and_metrics_are_not_cached(client):
+    assert client.get("/health").headers["cache-control"] == "no-store"
+    assert client.get("/metrics").headers["cache-control"] == "no-store"

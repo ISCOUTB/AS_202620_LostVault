@@ -21,7 +21,7 @@ from contextlib import asynccontextmanager
 from statistics import quantiles
 
 import jwt
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -136,6 +136,22 @@ async def measure_latency(request: Request, call_next):
         )
 
 
+# Política de caché HTTP (ver docs/datos/cache.md).
+# Solo el listado público se cachea en la CDN de Vercel: 30 s frescos y hasta
+# 60 s más sirviendo la copia vieja mientras se revalida. max-age=0 evita que el
+# navegador guarde su propia copia, así la ventana de datos viejos es una sola.
+# Todo lo demás (reclamaciones, health, métricas) es no-store por defecto.
+OBJECTS_CACHE_CONTROL = "public, max-age=0, s-maxage=30, stale-while-revalidate=60"
+DEFAULT_CACHE_CONTROL = "no-store"
+
+
+@app.middleware("http")
+async def cache_policy(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("Cache-Control", DEFAULT_CACHE_CONTROL)
+    return response
+
+
 # Datos en memoria
 _lock = threading.Lock()
 _objects: dict[str, dict] = {
@@ -178,7 +194,9 @@ def current_user_id(request: Request) -> str:
         raise ApiProblem(401, "UNAUTHENTICATED", "Debes iniciar sesión.")
     try:
         payload = jwt.decode(
-            token, jwt_secret(), algorithms=["HS256"], options={"require": ["sub"]}
+            # exp obligatorio: acota cuánto sigue valiendo una sesión revocada
+            # (operación C7 en docs/datos/consistencia.md)
+            token, jwt_secret(), algorithms=["HS256"], options={"require": ["sub", "exp"]}
         )
     except jwt.PyJWTError:
         raise ApiProblem(401, "UNAUTHENTICATED", "Token inválido o expirado.")
@@ -217,7 +235,10 @@ async def metrics():
 
 
 @app.get("/objects")
-async def search_objects(status: str | None = None, q: str | None = None):
+async def search_objects(
+    response: Response, status: str | None = None, q: str | None = None
+):
+    response.headers["Cache-Control"] = OBJECTS_CACHE_CONTROL
     with _lock:
         items = list(_objects.values())
     if status:

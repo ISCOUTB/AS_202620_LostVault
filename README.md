@@ -217,11 +217,17 @@ AS-03 Seguridad
 - `docs/arc42/10_requisitos_calidad.md`: árbol de utilidad y escenarios medibles.
 - `docs/arc42/11_riesgos.md`: riesgos y deuda técnica (incluye los modos de fallo de S11).
 - `docs/fallos-parciales/s11-fallos-parciales.md`: modos de fallo de la reclamación, idempotencia y análisis de saga/outbox.
+- `docs/datos/consistencia.md`: tabla operación → garantía de consistencia (S12).
+- `docs/datos/cache.md`: diseño de caché y política de invalidación (S12).
+- `docs/datos/eventos.md`: flujo por eventos (outbox) con garantías de entrega y orden (S12).
+- `docs/arc42/08_conceptos_transversales.md`: estrategia de consistencia, caché, idempotencia y eventos.
 - `docs/c4/contexto.mmd`: C4 de contexto como código.
 - `docs/c4/c4_contexto.png`: representación visual.
+- `docs/c4/c4_nivel2.md`: C4 de contenedores como código, con base de datos, caché y publicador de eventos como contenedores propios.
 - `docs/adr/0001-estilo-arquitectonico.md`: decisión arquitectónica y trazabilidad.
 - `docs/adr/0002-integracion-reclamacion-api.md`: elección de integración para reclamar objetos.
 - `docs/adr/0005-no-extraer-verificacion-identidad.md`: decisión de no extraer `identity_verification` a servicio (todavía).
+- `docs/adr/0006-postgresql-fuente-de-verdad.md`: PostgreSQL como fuente de verdad, la decisión de datos más costosa de revertir.
 - `docs/contracts/lostvault-api.yaml`: contrato OpenAPI 3.1 versionado.
 - `test/api_contract_test.dart`: consumidor que verifica requisitos incompatibles.
 - `docs/ia.md`: uso de IA, aceptaciones y rechazos.

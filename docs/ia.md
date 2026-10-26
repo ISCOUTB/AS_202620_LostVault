@@ -271,3 +271,36 @@ varias instancias de Vercel a la vez el problema F6 sigue abierto hasta conectar
 PostgreSQL (riesgo R1, aceptado). La lógica nueva se agregó en `backend/main.py`, así que
 la no conformidad NC6 de S9 (el archivo no separa módulos) sigue pendiente y ahora cubre
 también la idempotencia.
+
+## Registro S12 — 2026-10-25
+
+Se utilizó IA (Claude) para redactar la estrategia de datos y eventos a partir del
+estado real del repositorio (estado en memoria en Vercel, riesgos R1 y R7, idempotencia
+de la S11).
+
+Trabajo realizado y motivo:
+
+- Tabla operación → garantía (`docs/datos/consistencia.md`, C1–C11). Solo la reclamación
+  quedó con consistencia fuerte, porque es la única operación donde un dato viejo produce
+  una entrega indebida (Escenario 3).
+- Diseño de caché (`docs/datos/cache.md`) e implementación de las cabeceras en
+  `backend/main.py` (middleware `cache_policy`, `no-store` por defecto, `GET /objects`
+  cacheable en la CDN), con tres pruebas nuevas en `backend/test_api.py`.
+- Flujo por eventos con outbox (`docs/datos/eventos.md`), ADR 0006, arc42 §8, C4 nivel 2
+  como código y riesgos R8–R9.
+- Se unió el C4 nivel 2 en un solo diagrama como código (se retiró `C4 nivel 2.jpg`).
+- Se hizo obligatorio `exp` en el JWT de `backend/main.py` (C7), con dos pruebas nuevas.
+- Se documentó que `api/` es una implementación alternativa no desplegada (riesgo R10).
+
+Aceptado: pendiente de revisión del equipo (el ADR 0006 queda en estado *Propuesto*).
+
+Rechazado:
+
+- Caché en memoria del proceso: en Vercel no sobrevive entre invocaciones (misma causa de R7).
+- Redis como caché de lectura: agrega un servicio y no evita invocar la función.
+- Purga explícita de la caché al reclamar: acopla la escritura a la CDN y el dato viejo
+  no causa daño porque la reclamación revalida.
+- Un broker (Kafka / RabbitMQ): el volumen no lo justifica; la tabla `outbox` cumple el papel.
+
+Limitaciones: la base de datos y el outbox siguen sin implementarse; la consistencia fuerte
+entre instancias (R1) depende de ellos.
