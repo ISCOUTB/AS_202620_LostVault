@@ -1,6 +1,8 @@
 # Evidencia S12 — Flujo por eventos y sus garantías
 
-> **Estado: diseñado, no implementado.** Hoy ninguna operación publica eventos
+> **Estado: `ClaimCreated` implementado como simulador en memoria** ([ADR 0007](../adr/0007-aviso-reclamacion-asincrono.md), [evidencia](../fallos-parciales/s12-outbox-evidencia.md)); `ClaimRejected`/`ClaimCancelled` y el outbox en PostgreSQL siguen **diseñados, no implementados**.
+>
+> *Texto original:* Hoy ninguna operación publica eventos
 > (lo dice la [S11 §5](../fallos-parciales/s11-fallos-parciales.md)). Este flujo se
 > implementa junto con PostgreSQL ([ADR 0006](../adr/0006-postgresql-fuente-de-verdad.md)),
 > porque el outbox necesita la misma transacción que la reclamación.

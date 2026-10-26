@@ -1,0 +1,76 @@
+asyncapi: 3.0.0
+info:
+  title: LostVault - evento ClaimCreated
+  version: 1.0.0
+  description: |
+    Aviso de que una reclamación fue creada (HTTP 201, primera vez). Lo publica el
+    módulo `claims` y lo consume el notificador de la oficina de objetos perdidos.
+
+    ## Criterio de compatibilidad (versión del esquema = `schemaVersion`)
+
+    Compatible (NO sube `schemaVersion`, sube la versión menor de este documento):
+      - agregar campos opcionales en cualquier nivel;
+      - agregar valores nuevos a campos que el consumidor no interpreta.
+    Incompatible (SUBE `schemaVersion` y exige publicar v1 y v2 en paralelo
+    hasta que todos los consumidores migren):
+      - quitar o renombrar un campo, cambiar su tipo o su significado;
+      - volver obligatorio un campo antes opcional;
+      - cambiar cómo se calcula `eventId`.
+
+    Reglas del consumidor: ignora campos desconocidos (tolerant reader) y rechaza
+    (a la cola de fallidos, sin reintentar) un `schemaVersion` mayor al que conoce.
+    Garantías de entrega: al menos una vez; efecto exactamente una vez por
+    idempotencia sobre `eventId`; orden solo por `data.objectId`.
+channels:
+  claimCreated:
+    address: lostvault.claims.created
+    messages:
+      ClaimCreated:
+        $ref: '#/components/messages/ClaimCreated'
+operations:
+  publishClaimCreated:
+    action: send
+    channel:
+      $ref: '#/channels/claimCreated'
+    summary: El backend escribe el evento en el outbox en la misma operación que la reclamación.
+  notifyOffice:
+    action: receive
+    channel:
+      $ref: '#/channels/claimCreated'
+    summary: El notificador avisa a la oficina. Debe ser idempotente por eventId.
+components:
+  messages:
+    ClaimCreated:
+      name: ClaimCreated
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/ClaimCreated'
+  schemas:
+    ClaimCreated:
+      type: object
+      required: [eventId, type, schemaVersion, occurredAt, correlationId, data]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: >
+            Clave de idempotencia. UUIDv5 de "lostvault:claim:{objectId}:{userId}":
+            la misma reclamación siempre produce el mismo eventId.
+        type:
+          type: string
+          const: ClaimCreated
+        schemaVersion:
+          type: integer
+          const: 1
+        occurredAt:
+          type: number
+          description: Segundos desde epoch UTC en que se confirmó la reclamación.
+        correlationId:
+          type: string
+          description: X-Request-ID de la petición HTTP que originó la reclamación.
+        data:
+          type: object
+          required: [objectId, userId]
+          properties:
+            objectId: {type: string, minLength: 1}
+            userId: {type: string, minLength: 1}
