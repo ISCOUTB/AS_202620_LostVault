@@ -1,9 +1,11 @@
 # Evidencia S12 — Flujo por eventos y sus garantías
 
-> **Estado: diseñado, no implementado.** Hoy ninguna operación publica eventos
-> (lo dice la [S11 §5](../fallos-parciales/s11-fallos-parciales.md)). Este flujo se
-> implementa junto con PostgreSQL ([ADR 0006](../adr/0006-postgresql-fuente-de-verdad.md)),
-> porque el outbox necesita la misma transacción que la reclamación.
+> **Estado: implementado como simulador local** en `mensajeria/` (SQLite), con
+> pruebas: ver el [Taller de mensajería](../mensajeria/taller-mensajeria.md) y el
+> [ADR 0007](../adr/0007-notificacion-asincrona-outbox.md). La API desplegada todavía
+> no publica eventos: se conecta junto con PostgreSQL
+> ([ADR 0006](../adr/0006-postgresql-fuente-de-verdad.md)), porque el outbox necesita
+> la misma transacción que la reclamación.
 
 ## 1. Para qué hay eventos
 

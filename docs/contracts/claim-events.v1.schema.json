@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Fausto-4/AS_202620_LostVault/docs/contracts/claim-events.v1.schema.json",
+  "title": "Eventos de reclamación de LostVault (v1)",
+  "description": "Sobre común + cuerpo de los eventos que publica el módulo claims. Compatibilidad: ver docs/mensajeria/taller-mensajeria.md §1.",
+  "type": "object",
+  "required": ["event_id", "type", "schema_version", "occurred_at", "correlation_id", "aggregate_id", "data"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificador único del evento. Es la clave de deduplicación del consumidor."
+    },
+    "type": {
+      "enum": ["ClaimCreated", "ClaimRejected"]
+    },
+    "schema_version": {
+      "const": 1,
+      "description": "Versión mayor del contrato. Solo cambia ante un cambio incompatible."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "X-Request-ID de la petición HTTP que originó el evento. Permite seguir el mensaje de productor a consumidor."
+    },
+    "aggregate_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "objectId. El orden se garantiza solo entre eventos con el mismo aggregate_id."
+    },
+    "data": {
+      "type": "object",
+      "required": ["objectId", "userId"],
+      "properties": {
+        "objectId": { "type": "string", "minLength": 1 },
+        "userId": { "type": "string", "minLength": 1 },
+        "reason": {
+          "enum": ["IDENTITY_NOT_VERIFIED", "OBJECT_ALREADY_CLAIMED"],
+          "description": "Solo en ClaimRejected."
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "ClaimRejected" } } },
+      "then": { "properties": { "data": { "required": ["objectId", "userId", "reason"] } } }
+    }
+  ]
+}

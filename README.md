@@ -220,6 +220,9 @@ AS-03 Seguridad
 - `docs/datos/consistencia.md`: tabla operación → garantía de consistencia (S12).
 - `docs/datos/cache.md`: diseño de caché y política de invalidación (S12).
 - `docs/datos/eventos.md`: flujo por eventos (outbox) con garantías de entrega y orden (S12).
+- `docs/mensajeria/taller-mensajeria.md`: Taller de Sistemas de Mensajes — contrato, garantías, idempotencia, reintentos, trazas y límites; código en `mensajeria/`.
+- `docs/mensajeria/evidencia-ejecucion.md`: salida de las pruebas y de `python -m mensajeria.demo`.
+- `docs/contracts/claim-events.v1.schema.json`: contrato de los eventos `ClaimCreated` / `ClaimRejected`.
 - `docs/arc42/08_conceptos_transversales.md`: estrategia de consistencia, caché, idempotencia y eventos.
 - `docs/c4/contexto.mmd`: C4 de contexto como código.
 - `docs/c4/c4_contexto.png`: representación visual.
@@ -227,6 +230,7 @@ AS-03 Seguridad
 - `docs/adr/0001-estilo-arquitectonico.md`: decisión arquitectónica y trazabilidad.
 - `docs/adr/0002-integracion-reclamacion-api.md`: elección de integración para reclamar objetos.
 - `docs/adr/0005-no-extraer-verificacion-identidad.md`: decisión de no extraer `identity_verification` a servicio (todavía).
+- `docs/adr/0007-notificacion-asincrona-outbox.md`: notificación asíncrona con outbox frente a llamada síncrona.
 - `docs/adr/0006-postgresql-fuente-de-verdad.md`: PostgreSQL como fuente de verdad, la decisión de datos más costosa de revertir.
 - `docs/contracts/lostvault-api.yaml`: contrato OpenAPI 3.1 versionado.
 - `test/api_contract_test.dart`: consumidor que verifica requisitos incompatibles.

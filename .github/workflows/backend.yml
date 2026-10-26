@@ -28,6 +28,11 @@ jobs:
           pytest backend/test_api.py \
             --cov=backend --cov-report=xml:backend/coverage.xml --cov-report=term
 
+      - name: Messaging workshop tests
+        run: |
+          pytest -v mensajeria/tests
+          python -m mensajeria.demo
+
       - name: Upload backend coverage report
         uses: actions/upload-artifact@v4
         with:

@@ -304,3 +304,25 @@ Rechazado:
 
 Limitaciones: la base de datos y el outbox siguen sin implementarse; la consistencia fuerte
 entre instancias (R1) depende de ellos.
+
+## Registro Taller de Sistemas de Mensajes — 2026-10-25
+
+Se utilizó IA (Claude) para implementar como simulador local el flujo por eventos
+diseñado en la S12 (`mensajeria/`), con su contrato
+(`docs/contracts/claim-events.v1.schema.json`), 18 pruebas, la demo que genera la
+evidencia de ejecución y el ADR 0007.
+
+Aceptado: pendiente de revisión del equipo (ADR 0007 en estado *Propuesto*).
+
+Rechazado:
+
+- Montar RabbitMQ o Kafka en Docker: el taller acepta un simulador y lo que se califica
+  son las propiedades; un broker no habría hecho verificable la atomicidad
+  reclamación-evento, que es la propiedad central.
+- Conectar el outbox a `backend/main.py` ahora: la API desplegada no tiene base de datos;
+  se haría junto con PostgreSQL (ADR 0006).
+- Un publicador que avanza el tiempo a intervalos fijos en la demo: ocultaba el backoff,
+  porque las esperas eran menores que el intervalo; se cambió a despertar cuando toca.
+
+Limitaciones: ver la sección "Límites del experimento" de `docs/mensajeria/taller-mensajeria.md`.
+

@@ -52,7 +52,9 @@ evento se escribe en la misma transacción que la operación, y un publicador
 periódico lo entrega. Garantías: **al menos una vez**, orden **por objeto**,
 consumidores **idempotentes** por `event_id`; no se promete "exactamente una
 vez". No hay broker dedicado. Ver [`docs/datos/eventos.md`](../datos/eventos.md).
-Estado: diseñado, pendiente de PostgreSQL.
+Estado: implementado como simulador local en `mensajeria/`
+([taller](../mensajeria/taller-mensajeria.md), [ADR 0007](../adr/0007-notificacion-asincrona-outbox.md));
+pendiente de conectarlo a la API junto con PostgreSQL.
 
 ## 8.5 Persistencia
 
