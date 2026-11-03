@@ -15,6 +15,8 @@ class LostObject:
     id: str
     name: str
     claimed_by: str | None = None
+    description: str | None = None
+    reported_by: str | None = None
 
 
 def default_objects() -> list[LostObject]:
