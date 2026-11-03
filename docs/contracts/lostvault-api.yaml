@@ -9,6 +9,87 @@ info:
 servers:
   - url: https://api.lostvault.example
 paths:
+  /v1/auth/login:
+    post:
+      operationId: login
+      summary: Inicia sesión con correo institucional y contraseña.
+      description: >-
+        Devuelve un JWT para usar como Bearer en el resto de operaciones. El
+        correo debe pertenecer a un dominio institucional.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Sesión iniciada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          $ref: '#/components/responses/InvalidCredentials'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '503':
+          description: El inicio de sesión no está configurado en el servidor (AUTH_NOT_CONFIGURED).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+  /v1/objects:
+    post:
+      operationId: createObject
+      summary: Registra un objeto perdido.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateObjectRequest'
+      responses:
+        '201':
+          description: Objeto registrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LostObject'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /v1/objects/{objectId}:
+    delete:
+      operationId: deleteObject
+      summary: Borra un objeto perdido que reportó el propio usuario.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: objectId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '204':
+          description: Objeto borrado.
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          description: El objeto lo reportó otro usuario (FORBIDDEN).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/ObjectNotFound'
+        '409':
+          $ref: '#/components/responses/ObjectAlreadyClaimed'
   /v1/objects/{objectId}/claims:
     post:
       operationId: createClaim
@@ -97,6 +178,59 @@ components:
         verified:
           type: boolean
           const: true
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          minLength: 3
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+    TokenResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, tokenType, expiresIn]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          const: bearer
+        expiresIn:
+          type: integer
+          description: Segundos de vigencia del token.
+    CreateObjectRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        description:
+          type: [string, 'null']
+          maxLength: 1000
+    LostObject:
+      type: object
+      additionalProperties: false
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        reportedBy:
+          type: [string, 'null']
+        claimedBy:
+          type: [string, 'null']
     Problem:
       type: object
       additionalProperties: false
@@ -113,6 +247,10 @@ components:
             - IDENTITY_NOT_VERIFIED
             - IDEMPOTENCY_KEY_REUSED
             - INVALID_IDEMPOTENCY_KEY
+            - INVALID_CREDENTIALS
+            - AUTH_NOT_CONFIGURED
+            - VALIDATION_ERROR
+            - FORBIDDEN
         message:
           type: string
   responses:
@@ -145,6 +283,18 @@ components:
             $ref: '#/components/schemas/Problem'
     InvalidIdempotencyKey:
       description: La cabecera Idempotency-Key viene vacía o supera 255 caracteres.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InvalidCredentials:
+      description: Correo o contraseña incorrectos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    ValidationError:
+      description: El cuerpo de la petición no cumple el esquema (VALIDATION_ERROR).
       content:
         application/json:
           schema:
