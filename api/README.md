@@ -4,8 +4,11 @@ Implementación del contrato `docs/contracts/lostvault-api.yaml` (OpenAPI 3.1) d
 LostVault: reclamar un objeto perdido.
 
 ```
-POST /v1/objects/{objectId}/claims      (Bearer JWT, Idempotency-Key opcional)
-GET  /health                            (para health checks del panel)
+POST   /v1/auth/login                    (correo institucional + contraseña → JWT)
+POST   /v1/objects                       (Bearer JWT; registra un objeto perdido)
+DELETE /v1/objects/{objectId}            (Bearer JWT; solo quien lo reportó)
+POST   /v1/objects/{objectId}/claims     (Bearer JWT, Idempotency-Key opcional)
+GET    /health                           (para health checks del panel)
 ```
 
 | Código | Cuándo |
@@ -30,6 +33,12 @@ Copia `.env.example` a `.env` y define al menos `JWT_SECRET`.
 | `JWT_ALGORITHM` | Algoritmo del JWT | `HS256` |
 | `VERIFIED_EMAIL_DOMAINS` | Dominios cuya identidad se considera verificada | `utb.edu.co` |
 | `CORS_ORIGINS` | Orígenes permitidos (coma), vacío = sin CORS | vacío |
+| `AUTH_USER_EMAIL` | Correo del usuario único temporal (debe ser de `VERIFIED_EMAIL_DOMAINS`) | — |
+| `AUTH_USER_PASSWORD` | Contraseña del usuario único temporal | — |
+| `AUTH_USER_ID` | Id del usuario (claim `sub`) | `user-1` |
+| `JWT_EXPIRES_MINUTES` | Vigencia del token emitido por el login | `60` |
+| `PORT` | Puerto del servidor (debe coincidir con el Container Port del dominio) | `8000` |
+| `DATABASE_URL` | URL de la base de datos (aún no se usa) | vacío |
 
 El token debe incluir `sub` (id del usuario), `exp` y `email`. La identidad se
 considera verificada si el `email` pertenece a `VERIFIED_EMAIL_DOMAINS`.
@@ -69,6 +78,8 @@ docker run --rm -p 8000:8000 -e JWT_SECRET=un-secreto-largo lostvault-api
 
 ## Limitaciones
 
+- El login acepta un único usuario definido por variables de entorno; hay que
+  reemplazarlo por usuarios en base de datos (con contraseñas hasheadas).
 - Los datos (objetos y reclamaciones) están **en memoria** y se pierden al
   reiniciar, igual que la línea base del repositorio. Hay un único objeto de
   ejemplo, `1` ("Termo negro"). Para producción real hay que reemplazar
