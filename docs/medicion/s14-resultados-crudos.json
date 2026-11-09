@@ -1,0 +1,36 @@
+{
+  "objetivo": "https://backend-nu-self-91.vercel.app/objects?q=<termino>",
+  "generador": "scripts/medicion/carga_navegador.js en Chromium 152 (Windows 10 x64), HTTP/2",
+  "region_vercel": "iad1",
+  "inicio_utc": "2026-11-09T03:52:53.154Z",
+  "calentamiento": { "ms": 175.4, "status": 200, "x-vercel-cache": "MISS" },
+  "A_rafaga_inicial_misma_url": {
+    "requests": 1000, "ok": 1000, "errors": 0,
+    "p50": 1342.7, "p90": 2042.5, "p95": 2279.1, "p99": 2298.1, "max": 2507.7, "mean": 1385.7,
+    "roundWallMs": [2530, 1731, 1539, 1594, 1564],
+    "x-vercel-cache": { "MISS": 1000 }
+  },
+  "B_urls_unicas": {
+    "requests": 1000, "ok": 1000, "errors": 0,
+    "p50": 1427.6, "p90": 1798.3, "p95": 1867.5, "p99": 1896.6, "max": 1919.2, "mean": 1371.0,
+    "roundWallMs": [1677, 1674, 1817, 2028, 2139],
+    "x-vercel-cache": { "MISS": 1000 }
+  },
+  "fin_A_B_utc": "2026-11-09T03:53:11.460Z",
+  "C_base_secuencial_30": { "p50": 135.5, "p95": 162.4, "p99": 188.7, "max": 188.7 },
+  "C_200x5_cache_por_defecto": {
+    "total":           { "n": 1000, "p50": 3055.6, "p95": 5291.9, "p99": 5534.3, "max": 5728.0 },
+    "cola_navegador":  { "n": 1000, "p50": 2918.5, "p95": 5143.8, "p99": 5415.1, "max": 5606.8 },
+    "servidor_ttfb":   { "n": 1000, "p50": 118.9,  "p95": 147.9,  "p99": 252.2,  "max": 318.7 },
+    "errors": 0,
+    "x-vercel-cache": { "MISS": 1000 }
+  },
+  "fin_C_utc": "2026-11-09T03:53:56.960Z",
+  "metrics_despues_de_la_carga": { "/objects": { "p95_ms": 1.07, "samples": 364 } },
+  "sonda_cache_cdn": {
+    "url": "/objects?q=termo&probe=s14", "peticiones": 5, "intervalo_s": 1,
+    "x-vercel-cache": ["MISS", "MISS", "MISS", "MISS", "MISS"],
+    "age": ["0", "0", "0", "0", "0"],
+    "cache-control_recibido": "public, max-age=0, must-revalidate"
+  }
+}
