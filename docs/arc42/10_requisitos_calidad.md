@@ -64,4 +64,5 @@ Utilidad
 - **Respuesta:** El sistema retorna resultados de búsqueda.
 - **Medida:** 95 % de las búsquedas responden en ≤2 segundos (p95) con 200 usuarios concurrentes.
 - **Cómo se medirá:** prueba de carga con herramienta de rendimiento; registrar latencias y comprobar que el percentil 95 sea ≤2 s.
+- **Resultado medido (S14, 2026-11-09):** contra producción, p95 = **1 867 ms** con 200 concurrentes en estado estable (**cumple**, margen 7 %); **2 279 ms** en la primera ráfaga, mientras Vercel escala (**no cumple**). El tiempo de servidor fue de 148 ms (p95). Detalle en [`../medicion/s14-medicion-atributos.md`](../medicion/s14-medicion-atributos.md). Riesgos derivados: R11–R13 en [§11](11_riesgos.md).
 - **Relación arquitectónica:** [ADR 0001](../adr/0001-estilo-arquitectonico.md).
