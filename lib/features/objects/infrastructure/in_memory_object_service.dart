@@ -1,51 +1,43 @@
 import '../application/object_service.dart';
 import '../domain/lost_object.dart';
 
+/// Adaptador en memoria (mismo patrón que el corte vertical del repo).
 class InMemoryObjectService implements ObjectService {
-  InMemoryObjectService({List<LostObject> seed = const []})
-      : _objects = List<LostObject>.from(seed);
+  InMemoryObjectService()
+      : _items = [
+          const LostObject(
+              id: 'demo-1', name: 'Llaves con llavero de la U',
+              description: '', location: 'Biblioteca Bloque B', foundDate: '2026-05-18'),
+          const LostObject(
+              id: 'demo-2', name: 'Mochila negra Nike',
+              description: '', location: 'Biblioteca Bloque B', foundDate: '2026-05-18'),
+          const LostObject(
+              id: 'demo-3', name: 'Botella Hydro Flask',
+              description: '', location: 'Biblioteca Bloque B', foundDate: '2026-05-18'),
+          const LostObject(
+              id: 'demo-4', name: 'Botella Hydro Flask',
+              description: '', location: 'Biblioteca Bloque B', foundDate: '2026-05-18'),
+        ];
 
-  final List<LostObject> _objects;
+  final List<LostObject> _items;
 
   @override
-  List<LostObject> get objects => List.unmodifiable(_objects);
+  Future<ObjectListing> list() async =>
+      ObjectListing(List.unmodifiable(_items), fromDemo: true);
 
   @override
-  Future<LostObject?> findById(String id) async {
-    for (final object in _objects) {
-      if (object.id == id) return object;
-    }
-    return null;
+  Future<void> create(ObjectDraft d) async {
+    _items.insert(
+        0,
+        LostObject(
+            id: 'local-${DateTime.now().millisecondsSinceEpoch}',
+            name: d.name,
+            description: d.description,
+            location: d.location,
+            foundDate: d.foundDate));
   }
 
   @override
-  Future<LostObject> publish({
-    required String title,
-    required String description,
-  }) async {
-    final object = LostObject(
-      id: '${_objects.length + 1}',
-      title: title,
-      description: description,
-    );
-    _objects.add(object);
-    return object;
-  }
-
-  @override
-  Future<LostObject> markAsClaimed(String id) async {
-    final index = _objects.indexWhere((object) => object.id == id);
-    if (index == -1) {
-      throw StateError('El objeto solicitado no existe.');
-    }
-
-    final current = _objects[index];
-    if (!current.isAvailable) {
-      throw StateError('El objeto ya fue reclamado.');
-    }
-
-    final updated = current.markAsClaimed();
-    _objects[index] = updated;
-    return updated;
-  }
+  Future<void> delete(String objectId) async =>
+      _items.removeWhere((o) => o.id == objectId);
 }

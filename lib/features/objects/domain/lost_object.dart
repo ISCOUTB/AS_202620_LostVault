@@ -1,24 +1,56 @@
-enum LostObjectStatus { available, claimed }
+enum ObjectStatus { available, claimed }
 
 class LostObject {
   const LostObject({
     required this.id,
-    required this.title,
+    required this.name,
     required this.description,
-    this.status = LostObjectStatus.available,
+    required this.location,
+    required this.foundDate,
+    this.imagePath,
+    this.status = ObjectStatus.available,
   });
 
   final String id;
-  final String title;
+  final String name;
   final String description;
-  final LostObjectStatus status;
+  final String location;
+  final String foundDate; // yyyy-MM-dd
+  final String? imagePath; // foto local del dispositivo
+  final ObjectStatus status;
 
-  bool get isAvailable => status == LostObjectStatus.available;
+  bool get isAvailable => status == ObjectStatus.available;
 
-  LostObject markAsClaimed() => LostObject(
+  LostObject copyWith({ObjectStatus? status}) => LostObject(
         id: id,
-        title: title,
+        name: name,
         description: description,
-        status: LostObjectStatus.claimed,
+        location: location,
+        foundDate: foundDate,
+        imagePath: imagePath,
+        status: status ?? this.status,
       );
+}
+
+/// Datos para registrar un objeto.
+/// La API solo recibe name y description; ubicación, fecha y foto se guardan en el dispositivo.
+class ObjectDraft {
+  const ObjectDraft({
+    required this.name,
+    required this.description,
+    required this.location,
+    required this.foundDate,
+    this.imagePath,
+  });
+
+  final String name;
+  final String description;
+  final String location;
+  final String foundDate;
+  final String? imagePath;
+}
+
+class ObjectListing {
+  const ObjectListing(this.items);
+  final List<LostObject> items;
 }

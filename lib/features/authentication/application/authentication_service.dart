@@ -1,9 +1,8 @@
-import '../domain/auth_user.dart';
+import '../domain/session.dart';
 
-abstract interface class AuthenticationService {
-  AuthUser? get currentUser;
-
-  Future<AuthUser?> signIn(String email);
-
-  Future<void> signOut();
+abstract class AuthenticationService {
+  /// Sesión guardada del arranque anterior (null si no hay).
+  Future<Session?> restore();
+  Future<Session> login(String email, String password);
+  Future<void> logout();
 }

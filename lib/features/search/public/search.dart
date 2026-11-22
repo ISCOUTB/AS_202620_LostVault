@@ -1,2 +1,1 @@
-export '../application/search_service.dart';
-export '../domain/search_result.dart';
+export '../application/search_objects_use_case.dart';

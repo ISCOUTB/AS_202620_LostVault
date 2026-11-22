@@ -1,60 +1,26 @@
-import '../../../core/public/core.dart';
-import '../../authentication/public/authentication.dart';
-import '../../identity_verification/public/identity_verification.dart';
-import '../../objects/public/objects.dart';
+import 'dart:math';
 import '../domain/claim.dart';
 import 'claim_service.dart';
 
+/// Orquesta la reclamación. La misma intención reutiliza la Idempotency-Key
+/// en cada reintento (contrato: vigencia 24 h por usuario).
 class ClaimObjectUseCase {
-  ClaimObjectUseCase({
-    required AuthenticationService authentication,
-    required IdentityVerificationService identityVerification,
-    required ObjectService objects,
-    required ClaimService claims,
-  })  : _authentication = authentication,
-        _identityVerification = identityVerification,
-        _objects = objects,
-        _claims = claims;
+  ClaimObjectUseCase(this._service);
+  final ClaimService _service;
+  final Map<String, String> _keys = {};
+  final Random _rnd = Random.secure();
 
-  final AuthenticationService _authentication;
-  final IdentityVerificationService _identityVerification;
-  final ObjectService _objects;
-  final ClaimService _claims;
+  String _uuidV4() {
+    final b = List<int>.generate(16, (_) => _rnd.nextInt(256));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    final h = b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
+    return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-'
+        '${h.substring(16, 20)}-${h.substring(20)}';
+  }
 
-  Future<Result<Claim>> execute(String objectId) async {
-    final user = _authentication.currentUser;
-    if (user == null) {
-      return Result.failure(
-        'Reclamación bloqueada: debes iniciar sesión.',
-      );
-    }
-
-    final object = await _objects.findById(objectId);
-    if (object == null) {
-      return Result.failure('Reclamación bloqueada: el objeto no existe.');
-    }
-
-    if (!object.isAvailable) {
-      return Result.failure('Reclamación bloqueada: el objeto ya fue reclamado.');
-    }
-
-    final verification = await _identityVerification.verify(user.id);
-    if (!verification.valid) {
-      return Result.failure(
-        'Reclamación bloqueada: la identidad no pudo verificarse.',
-      );
-    }
-
-    try {
-      final claim = await _claims.requestClaim(
-        objectId: object.id,
-        userId: user.id,
-        identityVerified: verification.valid,
-      );
-      await _objects.markAsClaimed(object.id);
-      return Result.success(claim);
-    } on StateError catch (error) {
-      return Result.failure('Reclamación bloqueada: ${error.message}');
-    }
+  Future<Claim> call(String objectId) async {
+    final key = _keys.putIfAbsent(objectId, _uuidV4);
+    return _service.claim(objectId, idempotencyKey: key);
   }
 }

@@ -1,1 +1,21 @@
 /build
+
+# Flutter / Dart generado
+.dart_tool/
+.idea/
+*.iml
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Android generado y secretos
+android/local.properties
+android/.gradle/
+android/key.properties
+*.jks
+
+# Secretos
+.env
