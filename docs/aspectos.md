@@ -1,64 +1,13 @@
-# Aspectos de Calidad Declarados — LostVault
+# Aspectos de calidad declarados para la entrega final
 
-## Tensiones de calidad
+La API mantiene pública la búsqueda y aplica controles de acceso al crear una reclamación. El entorno público de referencia es [LostVault API en Vercel](https://backend-nu-self-91.vercel.app). La tabla enlaza los aspectos con implementación y evidencia verificable en este corte.
 
-LostVault enfrenta una tensión explícita entre **disponibilidad** y **seguridad**. La disponibilidad exige que la consulta del inventario esté accesible sin depender del horario de la oficina, mientras que la seguridad exige controles de identidad antes de permitir una reclamación. Un control de seguridad demasiado pesado puede aumentar fricción o impedir el acceso a funciones que deberían permanecer disponibles. La decisión arquitectónica busca mantener la consulta pública disponible y concentrar la verificación fuerte en la operación sensible de reclamación.
+| ID | Aspecto y criterio | Decisión y táctica | Implementación | Evidencia y límite |
+|---|---|---|---|---|
+| AS-03 | [Seguridad, escenario 3](arc42/10_requisitos_calidad.md#escenario-3--seguridad). Todos los casos inválidos de la suite deben ser rechazados. | [ADR 0002](adr/0002-integracion-reclamacion-api.md). Validar sesión e identidad en la operación sensible y conservar la búsqueda pública. | [API FastAPI](../backend/main.py), funciones `current_user_id`, `verify_identity` y `create_claim`. [Corte Flutter](../lib/features/claims/application/claim_object_use_case.dart). | [Pruebas de la API](../backend/test_api.py) para token ausente, inválido, sin expiración o vencido, identidad rechazada y reclamación exitosa. [Pruebas del corte Flutter](../test/claim_object_use_case_test.dart). La API verifica que el identificador tenga contenido. La verificación documental queda fuera de esta evidencia. |
+| AS-04 | [Rendimiento, escenario 4](arc42/10_requisitos_calidad.md#escenario-4--rendimiento). p95 de búsqueda ≤ 2.000 ms con unas 200 solicitudes concurrentes. | [ADR 0003](adr/0003-plataforma-despliegue-vercel.md). Ejecutar la búsqueda pública en Vercel, sin llevar validaciones de identidad al camino de lectura. | [API FastAPI](../backend/main.py), funciones `search_objects`, `measure_latency` y `metrics`. [Pruebas del cálculo p95](../backend/test_api.py). | [Medición S14](medicion/s14-medicion-atributos.md), [datos crudos](medicion/s14-resultados-crudos.json) y [script de la corrida](../scripts/medicion/carga_navegador.js). Cumplimiento parcial: ~1.870 ms en estado estable y 2.279 ms en la primera ráfaga. La CDN devolvió `MISS` durante el ensayo. |
 
-La entrega actual implementa **una fila completa hasta pruebas: AS-03 Seguridad**. Los demás aspectos conservan su definición arquitectónica y quedan pendientes de un corte ejecutable propio.
+## Objetivos de calidad pendientes de validación
 
-| ID | Aspecto | Prioridad | Justificación | Tensión | Escenario relacionado | Medida | Decisión/compromiso | Implementación del corte | Pruebas / evidencia |
-|---|---|---|---|---|---|---|---|---|---|
-| AS-01 | Disponibilidad | Alta | La consulta debe funcionar fuera del horario de la oficina. | Con Seguridad: controles adicionales no deben bloquear la consulta general. | [Escenario 1](arc42/10_requisitos_calidad.md#escenario-1--disponibilidad) | 99 % mensual; <7 h/mes de inactividad no programada. | Mantener consulta pública disponible y reservar la verificación fuerte para reclamaciones. [ADR 0001](adr/0001-estilo-arquitectonico.md) | Pendiente de un corte específico de disponibilidad. | Pendiente de medición HTTP en un entorno desplegado. |
-| AS-02 | Usabilidad | Alta | Estudiantes nuevos deben publicar sin capacitación. | Con Seguridad: la verificación no debe trasladarse a cada acción de consulta/publicación. | [Escenario 2](arc42/10_requisitos_calidad.md#escenario-2--usabilidad) | ≥90 % de usuarios nuevos publican en <3 min. | Formularios simples y controles de identidad solo donde aportan seguridad real. [ADR 0001](adr/0001-estilo-arquitectonico.md) | Pendiente de un corte específico de publicación. | Pendiente de prueba de usabilidad con usuarios nuevos. |
-| **AS-03** | **Seguridad** | **Alta** | Una reclamación no verificada no debe permitir la entrega. | Con Disponibilidad: el control de identidad puede añadir pasos y dependencias. | [Escenario 3](arc42/10_requisitos_calidad.md#escenario-3--seguridad) | **100 % de intentos sin verificación válida bloqueados.** | Aplicar verificación en reclamaciones y conservar el inventario consultable sin ella. [ADR 0001](adr/0001-estilo-arquitectonico.md) | **Corte vertical ejecutable:** `lib/main.dart` → `ClaimObjectUseCase` → contratos públicos de `authentication`, `identity_verification` y `objects` → `ClaimService` → adaptadores `infrastructure/`. El caso de uso bloquea ausencia de sesión, identidad inválida, objeto inexistente o ya reclamado; solo una identidad válida permite crear la reclamación y marcar el objeto como reclamado. | **`test/claim_object_use_case_test.dart`** prueba sesión ausente, identidad inválida y flujo válido. **`test/widget_test.dart`** prueba el recorrido desde UI. **`test/architecture_structure_test.dart`** protege la regla de dependencias entre módulos. Ejecutar `flutter test`. |
-| AS-04 | Rendimiento | Media | La búsqueda debe seguir siendo rápida con carga elevada. | Con Seguridad: validaciones innecesarias no deben incorporarse al camino crítico de búsqueda. | [Escenario 4](arc42/10_requisitos_calidad.md#escenario-4--rendimiento) | p95 ≤2 s con ~200 usuarios concurrentes. | Mantener búsqueda independiente de la verificación de identidad. [ADR 0001](adr/0001-estilo-arquitectonico.md) | `backend/main.py`: middleware `measure_latency` mide la duración de cada petición; `GET /metrics` expone el p95 por endpoint y lo compara explícitamente contra el objetivo del escenario (`objective_ms: 2000`, `met: true/false`). | `backend/test_api.py`: `test_p95_calculation_with_known_values` verifica el cálculo del percentil con valores conocidos. Medición con `autocannon` sobre el despliegue en Vercel, `GET /objects`, c=20, d=30: p95 ≤176 ms (mediana 130 ms, máx. 1678 ms), objetivo de 2 s cumplido; ~142 req/s y sin errores. Con c=200 el p95 fue ≤171 ms, pero ~44 % de las peticiones fallaron y Vercel bloqueó temporalmente el tráfico con 403; detalle en la [sección 5.4 del documento de despliegue](adr/000.3-despliegue-busqueda-lostvault.md#54-medición-real-sobre-el-despliegue-vercel-plan-gratuito-2026-10-04). |
-
-## Trazabilidad detallada de AS-03 — Seguridad
-
-```text
-Aspecto
-AS-03 Seguridad
-   ↓
-Escenario de calidad
-Escenario 3 — bloquear 100 % de intentos sin verificación válida
-   ↓
-Decisión arquitectónica
-ADR 0001 — monolito modular + hexagonal selectiva
-   ↓
-Táctica
-Orquestación en claims mediante contratos públicos y bloqueo por defecto
-   ↓
-Código
-ClaimObjectUseCase
-   ├── AuthenticationService
-   ├── IdentityVerificationService
-   ├── ClaimService
-   └── ObjectService
-   ↓
-Adaptadores
-InMemoryAuthenticationService
-InMemoryIdentityVerificationService
-InMemoryClaimService
-InMemoryObjectService
-   ↓
-Pruebas
-claim_object_use_case_test.dart
-widget_test.dart
-architecture_structure_test.dart
-```
-
-### Criterio de aceptación del corte AS-03
-
-Se considera satisfecho el corte cuando:
-
-1. una reclamación sin sesión es rechazada;
-2. una reclamación con identidad inválida es rechazada;
-3. en ambos casos el objeto permanece disponible y no se crea una reclamación válida;
-4. una reclamación con sesión e identidad válidas crea una reclamación verificada y cambia el objeto a estado reclamado;
-5. la UI permite demostrar el recorrido de manera ejecutable;
-6. los módulos involucrados solo consumen la frontera `public/` de otros módulos;
-7. `flutter test` finaliza sin fallos.
-
-## Detalle — Disponibilidad
-
-La disponibilidad continúa siendo el aspecto prioritario del árbol de utilidad porque el problema original depende del horario de la oficina. LostVault debe permitir consultar el inventario sin intervención humana. Sin embargo, el corte vertical seleccionado para esta entrega es AS-03 Seguridad porque ya existe un escenario de runtime transversal y permite demostrar la arquitectura completa hasta pruebas automatizadas.
+- **AS-01 · Disponibilidad.** [Escenario 1](arc42/10_requisitos_calidad.md#escenario-1--disponibilidad). Las respuestas de [salud](https://backend-nu-self-91.vercel.app/health) y [catálogo](https://backend-nu-self-91.vercel.app/objects) verifican acceso puntual. El objetivo mensual del 99 % requiere monitoreo periódico.
+- **AS-02 · Usabilidad.** [Escenario 2](arc42/10_requisitos_calidad.md#escenario-2--usabilidad). La meta de que el 90 % de usuarios nuevos publique en menos de tres minutos requiere un flujo de publicación y pruebas cronometradas con participantes nuevos.

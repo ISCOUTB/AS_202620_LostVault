@@ -2,6 +2,8 @@
 
 LostVault es una plataforma tipo Marketplace para objetos perdidos y encontrados dentro de la universidad.
 
+**API pública de referencia para la entrega:** [LostVault en Vercel](https://backend-nu-self-91.vercel.app). El recorrido Flutter descrito abajo se ejecuta localmente. [Vista de despliegue](docs/arc42/07_vista_despliegue.md) · [Aspectos y evidencia](docs/aspectos.md).
+
 ## Decisión arquitectónica
 
 **Monolito modular con aplicación selectiva de principios de arquitectura hexagonal.**
@@ -207,7 +209,7 @@ AS-03 Seguridad
 ## Documentación arquitectónica
 
 - `docs/ficha_problema.md`: problema, población, alcance y tensiones de calidad.
-- `docs/aspectos.md`: tabla de aspectos con trazabilidad hasta implementación y pruebas para AS-03.
+- `docs/aspectos.md`: tabla de aspectos con trazabilidad y evidencia para AS-03 y AS-04.
 - `docs/arc42/01_objetivos.md`: objetivos y prioridades.
 - `docs/arc42/02_restricciones.md`: restricciones.
 - `docs/arc42/03_contexto.md`: contexto y actores.
@@ -226,6 +228,7 @@ AS-03 Seguridad
 - `docs/arc42/08_conceptos_transversales.md`: estrategia de consistencia, caché, idempotencia y eventos.
 - `docs/c4/contexto.mmd`: C4 de contexto como código.
 - `docs/c4/c4_contexto.png`: representación visual.
+- [C4 nivel 3](docs/c4/c4_nivel3.md): componentes de la API desplegada.
 - `docs/c4/c4_nivel2.md`: C4 de contenedores como código, con base de datos, caché y publicador de eventos como contenedores propios.
 - `docs/adr/0001-estilo-arquitectonico.md`: decisión arquitectónica y trazabilidad.
 - `docs/adr/0002-integracion-reclamacion-api.md`: elección de integración para reclamar objetos.

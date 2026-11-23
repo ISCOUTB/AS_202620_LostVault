@@ -25,6 +25,8 @@ Utilidad
 
 ## Escenarios de calidad
 
+Los escenarios 1 y 2 se conservan como objetivos pendientes de validación. Los escenarios 3 y 4 se trazan como aspectos declarados de este corte en la [tabla de aspectos](../aspectos.md).
+
 ## Escenario 1 — Disponibilidad
 - **Fuente:** Estudiante
 - **Estímulo:** Intenta consultar el estado de un objeto perdido fuera del horario de atención.
@@ -50,9 +52,10 @@ Utilidad
 - **Estímulo:** Intenta reclamar un objeto que no le pertenece.
 - **Artefacto:** Módulo de verificación de identidad.
 - **Entorno:** Operación normal.
-- **Respuesta:** El sistema rechaza la entrega y marca el intento para revisión.
+- **Respuesta:** La API rechaza la creación de la reclamación ante credenciales inválidas o cuando la comprobación de identidad falla.
 - **Medida:** 100 % de los intentos sin verificación válida son bloqueados automáticamente.
 - **Cómo se medirá:** pruebas automatizadas de casos válidos e inválidos; ningún caso inválido debe producir estado de reclamación autorizada. La evidencia implementada está en `test/claim_object_use_case_test.dart` y `test/widget_test.dart`.
+- **Alcance de la evidencia:** La API exige JWT válido y comprueba que el identificador tenga contenido. Las pruebas verifican el flujo de rechazo. La verificación documental y la revisión manual quedan fuera del corte.
 - **Evidencia ejecutable:** `lib/features/claims/application/claim_object_use_case.dart`, recorrido manual descrito en el `README.md` y trazabilidad de AS-03 en `docs/aspectos.md`.
 - **Relación arquitectónica:** [ADR 0001](../adr/0001-estilo-arquitectonico.md).
 

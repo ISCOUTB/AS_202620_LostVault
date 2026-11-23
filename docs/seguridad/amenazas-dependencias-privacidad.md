@@ -1,6 +1,6 @@
  Amenazas, dependencias y privacidad — LostVault
 
-Fecha: 2026-11-01. Alcance: API FastAPI de `backend/` (desplegada en el servidor que exige la universidad, https://panel.iscoutb.dev/) y su relación con el cliente Flutter.
+Fecha: 2026-11-01. Alcance: API FastAPI de `backend/` (despliegue público verificado para la entrega: [Vercel](https://backend-nu-self-91.vercel.app)) y su relación con el cliente Flutter.
 
 > Nota de despliegue: el equipo probó Vercel en una etapa intermedia, pero el despliegue final es el servidor de la universidad. Las amenazas de este documento se evalúan contra ese servidor. Lo que se midió en Vercel se cita solo como antecedente y se indica cuando es así.
 

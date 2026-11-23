@@ -359,3 +359,35 @@ Limitaciones:
 - La IA no pudo ejecutar `pip-audit`, así que la consulta de vulnerabilidades fue manual. La versión de Starlette instalada no se comprobó, no se analizaron las dependencias de Dart y quedaron fuera `mensajeria/`, `api/` (riesgo R10) y `requirements-dev.txt`.
 - La primera redacción de la fila A2 daba por cierto que el JWT no exigía `exp`, porque la IA leyó la versión de `main.py` de principios de octubre, anterior a los cambios de S11 y S12. El registro S12 indica que `exp` ya es obligatorio, y la fila se corrigió: la prioridad bajó de Alta a Media y el riesgo restante es la custodia de `JWT_SECRET`. La fila A4 se actualizó por la misma razón (las cabeceras de caché ya existen; falta el límite de tasa).
 
+
+## Registro S14 — Medición de atributos de calidad
+
+Se utilizó IA (Codex) durante la revisión documental de la evidencia S14 para
+interpretar la medición del Escenario 4 y vincular sus resultados con AS-04, la
+decisión de despliegue y las limitaciones de la API. La revisión se basó en la
+[evidencia de medición](medicion/s14-medicion-atributos.md), los
+[datos crudos](medicion/s14-resultados-crudos.json) y el
+[PR #26](https://github.com/ISCOUTB/AS_202620_LostVault/pull/26).
+
+Trabajo realizado y motivo:
+
+- Se comparó el p95 de búsqueda en Vercel con el umbral de 2.000 ms para
+  aproximadamente 200 solicitudes concurrentes. El p95 fue de ~1.870 ms en
+  estado estable y de 2.279 ms en la primera ráfaga.
+- Se relacionó el resultado con los riesgos de escalado inicial (R11), las
+  respuestas `MISS` de la CDN durante la prueba (R12) y las limitaciones del
+  generador de carga basado en un solo navegador (R13).
+- Se enlazaron los [scripts de medición](../scripts/medicion/) y los datos
+  crudos desde la [tabla de aspectos](aspectos.md) para rastrear la evidencia.
+
+Aceptado para la documentación: reportar cumplimiento parcial, conservar por
+separado los resultados estable e inicial y mantener la evidencia reproducible.
+
+Rechazado en la revisión: declarar cumplimiento total usando solo la corrida
+estable o usar el p95 local de `/metrics` como p95 global del servicio. La
+primera ráfaga superó el umbral y las métricas locales pertenecen a cada instancia.
+
+Limitaciones: esta revisión con IA no generó los datos ni repitió la prueba de
+carga. El ensayo original se ejecutó desde un navegador y su medición incluye
+la espera del cliente. El repositorio no identifica qué herramienta de IA pudo
+haber intervenido en el trabajo original del PR #26.

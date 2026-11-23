@@ -21,7 +21,7 @@ documenta la decisión real y `estimacion-costo-mensual.md` se corrige para
 apuntar aquí.
 
 Importante para no confundir dos entregas distintas: existe también
-`docs/adr/0003-despliegue-busqueda-lostvault.md` (con un typo de numeración
+`docs/adr/000.3-despliegue-busqueda-lostvault.md` (con un typo de numeración
 histórico, "000.3"), que es el ejercicio comparativo de laboratorio (Railway
 vs. Google Cloud Functions Gen2 para el endpoint de búsqueda), evaluado por
 separado como el 15% del segundo corte. Ese documento no describe el sistema
@@ -35,9 +35,8 @@ evidencia S8 califica la operación del sistema real").
    (curso, demostración, evaluación) es esporádico, no sostenido — no cumple
    el criterio que exigiría un proceso continuo.
 2. **¿El p95 objetivo es compatible con el arranque en frío del candidato?**
-   El Escenario 2 exige p95 ≤ 2s con 200 usuarios concurrentes para búsquedas.
-   El arranque en frío de una función Python simple en Vercel es del orden de
-   cientos de milisegundos, muy por debajo de ese umbral.
+   El Escenario 4 exige p95 ≤ 2s con 200 usuarios concurrentes para búsquedas.
+   El ensayo S14 registró ~1.870 ms en estado estable y 2.279 ms en la primera ráfaga. La primera ráfaga supera el umbral.
 3. **Costo y fricción operativa para un proyecto académico**: sin tarjeta,
    sin servidor que alguien deba mantener encendido, con detección
    Zero-Config a partir de `backend/requirements.txt` y `backend/main.py:app`.
@@ -48,7 +47,7 @@ Se despliega la API en **Vercel**, como función serverless Python 3.12,
 detectada automáticamente (Zero-Config) sin Docker ni configuración manual de
 runtime.
 
-- **URL de producción**: `https://backend-nu-self-91.vercel.app`
+- **URL pública de referencia para la entrega**: `https://backend-nu-self-91.vercel.app`
 - **Proyecto Vercel**: `shamara-llorente-s-projects/backend`
 - **Variables de entorno**: `JWT_SECRET` (obligatoria, validada en el
   `lifespan` de FastAPI; el proceso no arranca sin ella) y `LOG_LEVEL`
@@ -73,7 +72,7 @@ Viable y sigue siendo la alternativa recomendada si el tráfico deja de ser
 esporádico o si se necesita estado persistente en memoria entre peticiones
 (ver limitación abajo). No se elige ahora porque añade un servicio adicional
 a mantener sin necesidad, dado que Zero-Config en Vercel ya cumple los
-criterios 1 y 2.
+criterios de tráfico y costo. El escenario de latencia se cumplió parcialmente en S14.
 
 ## Consecuencias
 
@@ -86,16 +85,9 @@ criterios 1 y 2.
 
 **Costos aceptados — limitación descubierta durante esta entrega**
 
-- Cada invocación de la función corre en una instancia potencialmente nueva:
-  no hay estado compartido garantizado entre peticiones. Esto se comprobó
-  empíricamente (ver [arc42 §7](../arc42/07_vista_despliegue.md)): múltiples
-  peticiones a `/health` y `/objects`, seguidas de `GET /metrics`, mostraron
-  siempre `"samples": 1` sin importar cuántas peticiones previas se hicieran.
-- Consecuencia directa: **no hay base de datos real** — `_objects` y
-  `_claims` son diccionarios en memoria que se reinician con cada instancia
-  fría — y el mecanismo de p95 en `/metrics` no puede acumular muestras entre
-  peticiones reales de producción, aunque su cálculo es correcto dentro de un
-  mismo proceso (probado por `test_metrics_groups_by_route_template_not_raw_path`).
+- Los objetos, las reclamaciones, las claves de idempotencia y las muestras de latencia viven en memoria de cada instancia.
+- S14 observó que `/metrics` acumula muestras si se reutiliza el proceso. El p95 local carece de agregación entre instancias. El criterio AS-04 se evalúa con la [medición de extremo a extremo](../medicion/s14-medicion-atributos.md).
+
 - Si el proyecto necesita persistencia real o métricas acumuladas entre
   peticiones, la vía recomendada es un almacén externo compartido (Vercel KV
   / Upstash Redis) o agregar los `duration_ms` desde los logs estructurados
