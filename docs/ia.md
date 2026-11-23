@@ -328,18 +328,32 @@ Limitaciones: ver la sección "Límites del experimento" de `docs/mensajeria/tal
 
 ## Registro S13 — 2026-11-01
 
-Se utilizó IA (Claude) para redactar la tabla de amenazas priorizadas, el análisis de dependencias y la sección de privacidad de la entrega de seguridad (`docs/seguridad/amenazas-dependencias-privacidad.md`). La IA no tiene acceso directo al repositorio: trabajó con los archivos que el equipo le compartió (`backend/main.py` y `backend/test_api.py`, `requirements.txt`, el `Dockerfile`, `mapa_contextos.md` y este mismo `docs/ia.md`).
+Se utilizó IA (Claude) para redactar la tabla de amenazas priorizadas, el análisis de dependencias y la sección de privacidad de la entrega de seguridad (`docs/seguridad/amenazas-dependencias-privacidad.md`). La IA no tiene acceso directo al repositorio: trabajó con los archivos que el equipo le compartió (`backend/main.py` y `backend/test_api.py`, `requirements.txt`, el `Dockerfile`, `mapa_contextos.md` y este mismo `docs/ia.md`). El trabajo se hizo en dos conversaciones con Claude: la primera produjo la versión inicial del documento y la segunda lo corrigió para el despliegue final.
 
 Trabajo realizado y motivo:
 
-- Se construyó la tabla de nueve amenazas (STRIDE), priorizadas por probabilidad × impacto, cada una con su evidencia en el repositorio, su mitigación y un responsable propuesto. Las dos de mayor prioridad salen de leer el código: `verify_identity()` acepta cualquier `sub` no vacío (A1), y las reclamaciones viven en memoria y se pierden en cada arranque en frío (A3).
+- Se construyó la tabla de amenazas (STRIDE), priorizadas por probabilidad × impacto, cada una con su evidencia en el repositorio, su mitigación y un responsable propuesto. Las dos de mayor prioridad salen de leer el código: `verify_identity()` acepta cualquier `sub` no vacío (A1), y las reclamaciones viven en memoria y se pierden al reiniciar el proceso (A3).
 - Se consultaron manualmente OSV, GitLab Advisory Database y bases públicas de CVE para `fastapi`, `uvicorn` y `PyJWT`. Se concluyó que `PyJWT==2.7.0` está por debajo de varias correcciones y se recomendó subir a 2.15.0 o superior. Para decidir cuáles CVE aplican a LostVault, la IA razonó según cómo usa la librería `main.py` (HS256 con algoritmo fijo, secreto en el entorno, sin `PyJWKClient`); esa lectura es un juicio de la IA y no una prueba.
-- Se redactó la sección de privacidad bajo la Ley 1581 de 2012: datos personales que trata el sistema, decisiones (minimización, logs con lista cerrada de campos, retención, ubicación del tratamiento en EE. UU. por la región de Vercel) y cuatro brechas abiertas (aviso de privacidad, derechos del titular, plazo de retención y evidencia de identidad).
+- Se redactó la sección de privacidad bajo la Ley 1581 de 2012: datos personales que trata el sistema, decisiones (minimización, logs con lista cerrada de campos, retención, ubicación del tratamiento) y cinco brechas abiertas (aviso de privacidad, derechos del titular, plazo de retención, evidencia de identidad y política de registros y copias del servidor).
 
-Aceptado: la tabla, el análisis y la sección de privacidad, pendientes de revisión del equipo. Los responsables de cada mitigación son una propuesta y deben confirmarse.
+Corrección posterior (cambio de despliegue):
 
-Rechazado: la primera versión del documento incluía una lista de pendientes y referencias a evidencias anteriores; el equipo pidió dejar solo lo que pide la entrega (amenazas, dependencias y privacidad).
+- La primera versión daba por hecho que la API estaba en Vercel. El equipo informó después que el despliegue final es el servidor que exige la universidad (`https://panel.iscoutb.dev/`), y el documento se reescribió contra ese servidor. Se agregó una nota de despliegue que dice que Vercel fue una etapa intermedia.
+- Las filas A2 (dónde se guarda `JWT_SECRET`), A3 (reinicio del proceso o del servidor en vez de arranque en frío), A4 (el 44 % de fallos y el 403 de la prueba de carga se midieron en Vercel; se citan como antecedente y no se han repetido contra el servidor actual) y A5 (doble reclamación entre procesos o *workers* en vez de entre instancias de Vercel) se reformularon. En la sección de privacidad desapareció la preocupación por la región de EE. UU., y la ubicación física del servidor quedó por confirmar.
+- Se agregó la amenaza A10 (acceso al panel o al servidor: quien tenga las credenciales puede redesplegar y leer `JWT_SECRET`). Su prioridad es provisional, porque no tiene evidencia en el código.
+- El equipo confirmó que el servidor de la universidad ofrece una base de datos. El repositorio todavía no la usa (el código guarda el estado en memoria y no contiene ninguna conexión), así que A3 se mantiene como pendiente y su mitigación pasó a ser conectar el backend a esa base de datos.
+- Se agregó una sección "Por confirmar antes de entregar" con los cinco datos que dependen del servidor y no se pueden deducir del repositorio: dónde se configura `JWT_SECRET`, cuántos *workers* corren, HTTPS y segundo factor del panel, ubicación y política de registros, y si se repite la prueba de carga.
+- La primera redacción de la fila A2 daba por cierto que el JWT no exigía `exp`, porque la IA leyó la versión de `main.py` de principios de octubre, anterior a los cambios de S11 y S12. El registro S12 indica que `exp` ya es obligatorio, y la fila se corrigió: la prioridad bajó de Alta a Media y el riesgo restante es la custodia de `JWT_SECRET`. La fila A4 se actualizó por la misma razón (las cabeceras de caché ya existen; falta el límite de tasa).
 
+Aceptado: la tabla, el análisis y la sección de privacidad con la corrección al servidor de la universidad, pendientes de revisión del equipo. Los responsables de cada mitigación son una propuesta y deben confirmarse.
+
+Rechazado: dar por ciertos detalles del servidor de la universidad que no constan en el repositorio (cuántos *workers* corren, HTTPS, segundo factor del panel, ubicación física, si el backend ya usa la base de datos); se dejaron como "por confirmar" o como pendientes. También se rechazó reescribir la tabla de amenazas desde cero sin ver el archivo del equipo, para no inventar evidencia.
+
+Limitaciones:
+
+- La IA no pudo ejecutar `pip-audit`, así que la consulta de vulnerabilidades fue manual. La versión de Starlette instalada no se comprobó, no se analizaron las dependencias de Dart y quedaron fuera `mensajeria/`, `api/` (riesgo R10) y `requirements-dev.txt`.
+- La IA no pudo abrir `panel.iscoutb.dev` ni verificar el despliegue, y el repositorio no contiene configuración del panel. Los datos del servidor quedan marcados como por confirmar y no como hechos.
+- Solo este documento describe el despliegue en el servidor de la universidad. Otros documentos (arc42 §7, C4 nivel 2, ADR 0003 y `estimacion-costo-mensual.md`) siguen describiendo Vercel y están pendientes de alinearse.
 Limitaciones:
 
 - La IA no pudo ejecutar `pip-audit`, así que la consulta de vulnerabilidades fue manual. La versión de Starlette instalada no se comprobó, no se analizaron las dependencias de Dart y quedaron fuera `mensajeria/`, `api/` (riesgo R10) y `requirements-dev.txt`.
