@@ -11,7 +11,7 @@
 El [ADR 0003](0003-plataforma-despliegue-vercel.md) eligió Vercel (función serverless, plan gratuito)
 para la entrega S8. Vercel fue una etapa intermedia: el equipo informó después que el
 despliegue final es el **servidor que exige la universidad**, gestionado desde el panel
-`https://panel.iscoutb.dev/`.
+`https://panel.iscoutb.dev/` (Plataforma ISCOUTB / Dokploy Server).
 
 Lo que se aprendió en Vercel y sigue vigente como antecedente:
 
@@ -26,11 +26,10 @@ Lo que se aprendió en Vercel y sigue vigente como antecedente:
 ## Decisión
 
 Se despliega la API en el **servidor de la universidad**, como contenedor Docker
-administrado desde el panel.
+administrado desde el panel (servicio `LostVault_Api`, proyecto `lostvault`, entorno `production`).
 
-- **Panel de administración**: `https://panel.iscoutb.dev/`.
-- **URL pública de la API**: **[CONFIRMAR]** (el panel es la consola de administración,
-  no necesariamente la URL que se entrega y se usa en la demostración).
+- **Panel de administración**: `https://panel.iscoutb.dev/` (Plataforma ISCOUTB / Dokploy Server)[cite: 1].
+- **URL pública configurada en el panel**: `http://lostvault-lostvaultapi-1k8ly4-3d8075-144-24-4-187.sslip.io` (`Path: /`, `Port: 8000`, protocolo `HTTP`, `Cert: none`)[cite: 1]. **[CONFIRMAR: verificar estado del interruptor/habilitación del dominio en el panel y respuesta HTTP en vivo]**.
 - **Código desplegado**: **[CONFIRMAR: `backend/` o `api/`]**. El repositorio contiene dos
   implementaciones con `Dockerfile`; solo `backend/` expone `GET /objects` (búsqueda,
   Escenario 4), y solo `api/` está escrita para un panel con Container Port y health
@@ -65,11 +64,10 @@ universidad ya provee el servidor.
 - **No hay medición de rendimiento en este servidor.** Las cifras de S14 son de Vercel y
   no se pueden presentar como resultado de esta plataforma. La prueba de carga no se ha
   repetido contra el servidor de la universidad (requiere permiso de quien lo administra).
+- **Tráfico sin cifrado TLS en la configuración observada:** el dominio `*.sslip.io` figura en el panel sobre `HTTP` con `Cert: none` (sin HTTPS forzado en esa vista)[cite: 1].
 - El estado sigue en memoria: un reinicio del contenedor lo borra, y con más de un proceso
   (workers) el candado no se comparte (amenaza A5).
-- Datos del servidor **sin confirmar** (no constan en el repositorio): número de workers,
-  HTTPS forzado, segundo factor del panel, ubicación física, política de registros y copias
-  de seguridad.
+- Datos del servidor **sin confirmar** (no constan en el repositorio ni en la vista de dominios): número de workers, segundo factor del panel, ubicación física, política de registros y copias de seguridad.
 
 ## Qué debe cambiar por este ADR
 
