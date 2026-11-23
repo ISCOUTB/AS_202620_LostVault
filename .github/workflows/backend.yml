@@ -33,6 +33,13 @@ jobs:
           pytest -v mensajeria/tests
           python -m mensajeria.demo
 
+      - name: Install institutional API test dependencies
+        run: python -m pip install -r api/requirements-dev.txt
+
+      - name: Test institutional API and admin panel
+        working-directory: api
+        run: python -m pytest -q
+
       - name: Upload backend coverage report
         uses: actions/upload-artifact@v4
         with:

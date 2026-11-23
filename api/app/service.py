@@ -65,6 +65,9 @@ def create_claim(
                 return ClaimOutcome(claim=claim, status_code=200, replayed=False)
             raise ApiError(409, "OBJECT_ALREADY_CLAIMED", "El objeto ya fue reclamado.")
 
+        if lost_object.delivered:
+            raise ApiError(409, "OBJECT_ALREADY_CLAIMED", "El objeto ya fue entregado.")
+
         if not is_identity_verified(user):
             raise ApiError(
                 422,

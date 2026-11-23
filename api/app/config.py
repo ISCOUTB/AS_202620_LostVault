@@ -44,6 +44,14 @@ def jwt_expires_minutes() -> int:
     return int(os.environ.get("JWT_EXPIRES_MINUTES", "60"))
 
 
+def admin_account() -> tuple[str, str, str] | None:
+    email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    password = os.environ.get("ADMIN_PASSWORD", "")
+    if not email or not password:
+        return None
+    return "office-admin", email, password
+
+
 def single_user() -> tuple[str, str, str] | None:
     """Usuario único temporal: (id, correo, contraseña), o None si no está configurado."""
     email = os.environ.get("AUTH_USER_EMAIL", "").strip()

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inventario de objetos | LostVault</title>
+<style>
+  :root { color-scheme: light; font: 16px/1.5 system-ui, sans-serif; color:#142f39; background:#f4f7f6; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; }
+  header { background:#112a35; color:#fff; }
+  .wrap { width:min(1080px, calc(100% - 40px)); margin:auto; }
+  header .wrap { min-height:72px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .brand { font-size:1.3rem; font-weight:750; letter-spacing:-.035em; }
+  main { padding:42px 0 70px; }
+  h1 { font-size:clamp(2rem,5vw,3rem); margin:0; line-height:1.1; letter-spacing:-.05em; }
+  h2 { font-size:1.25rem; margin:0 0 14px; }
+  .hint { color:#4d6870; margin:8px 0 24px; }
+  .login { max-width:420px; }
+  .sheet { background:#fff; border:1px solid #d5e2dd; padding:24px; border-radius:12px; }
+  label { display:block; font-weight:650; margin:0 0 12px; }
+  input, textarea, select, button { font:inherit; }
+  input, textarea, select { width:100%; padding:9px 11px; margin-top:5px; border:1px solid #94aaa7; border-radius:6px; background:#fff; color:#142f39; }
+  textarea { resize:vertical; min-height:88px; }
+  button { cursor:pointer; border:1px solid transparent; border-radius:6px; padding:9px 14px; font-weight:650; background:#086454; color:#fff; }
+  button.secondary { color:#075c4e; background:#f0f8f5; border-color:#b7d2ca; }
+  button:disabled { cursor:wait; opacity:.65; }
+  :focus-visible { outline:3px solid #507bc2; outline-offset:2px; }
+  .layout { display:grid; grid-template-columns:minmax(0,2fr) minmax(240px,1fr); gap:22px; align-items:start; }
+  .filters { display:grid; grid-template-columns:minmax(0,2fr) minmax(120px,1fr); gap:10px; }
+  .status { min-height:1.5em; margin:14px 0; }
+  .error { color:#a22222; }
+  .list { list-style:none; padding:0; margin:0; }
+  .list li { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 0; border-top:1px solid #d5e2dd; }
+  .list li > div { min-width:0; overflow-wrap:anywhere; }
+  .list small { display:block; color:#4d6870; }
+  .list strong { display:block; }
+  .list button { flex-shrink:0; }
+  @media(max-width:760px) { .layout { grid-template-columns:1fr; } }
+  @media(max-width:420px) { .wrap { width:calc(100% - 24px); } .sheet { padding:16px; } .list li { align-items:start; flex-direction:column; } }
+</style>
+<header><div class="wrap"><span class="brand">LostVault</span><button id="logout" class="secondary" hidden>Cerrar sesión</button></div></header>
+<main class="wrap">
+  <section id="signin" class="login">
+    <h1>Acceso del encargado</h1>
+    <p class="hint">Inicia sesión con la cuenta de la oficina de objetos perdidos.</p>
+    <form id="login" class="sheet">
+      <label>Correo institucional<input name="email" type="email" autocomplete="username" required maxlength="254"></label>
+      <label>Contraseña<input name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+      <button>Iniciar sesión</button>
+      <p id="login-error" class="status error" role="alert"></p>
+    </form>
+  </section>
+  <section id="inventory" hidden>
+    <h1>Inventario de objetos</h1>
+    <p id="notice" class="status" role="status" aria-live="polite"></p>
+    <div class="layout">
+      <section class="sheet">
+        <h2>Objetos registrados</h2>
+        <div class="filters">
+          <label>Buscar<input id="search" type="search" placeholder="Nombre o descripción"></label>
+          <label>Estado<select id="filter"><option value="">Todos</option><option value="available">Disponible</option><option value="claimed">Reclamado</option><option value="delivered">Entregado</option></select></label>
+        </div>
+        <ul id="list" class="list"></ul>
+        <p id="empty" class="hint" hidden></p>
+        <button id="reload" type="button" class="secondary">Actualizar inventario</button>
+      </section>
+      <form id="register" class="sheet">
+        <h2>Registrar objeto recibido</h2>
+        <label>Nombre<input name="name" required maxlength="120"></label>
+        <label>Descripción<textarea name="description" maxlength="1000"></textarea></label>
+        <button>Registrar objeto</button>
+      </form>
+    </div>
+  </section>
+</main>
+<script>
+  const byId = (id) => document.getElementById(id);
+  const states = { available: "Disponible", claimed: "Reclamado", delivered: "Entregado" };
+  const objectsPath = "/v1/admin/objects";
+  let token = "";
+  let items = [];
+  let revision = 0;
+
+  function message(text, error = false) {
+    byId("notice").textContent = text;
+    byId("notice").classList.toggle("error", error);
+  }
+
+  function showInventory(visible) {
+    byId("signin").hidden = visible;
+    byId("inventory").hidden = !visible;
+    byId("logout").hidden = !visible;
+  }
+
+  function logout(error = "") {
+    token = "";
+    revision++;
+    items = [];
+    render();
+    byId("register").reset();
+    showInventory(false);
+    byId("login-error").textContent = error;
+    byId("login").elements.email.focus();
+  }
+
+  async function request(path, {method = "GET", body} = {}) {
+    const sessionToken = token;
+    const headers = {};
+    if (sessionToken) headers.Authorization = "Bearer " + sessionToken;
+    if (body) headers["Content-Type"] = "application/json";
+    const response = await fetch(path, {
+      method, headers, cache: "no-store", body: body ? JSON.stringify(body) : undefined
+    });
+    if (sessionToken !== token) throw new Error("La sesión cambió.");
+    const data = await response.json().catch(() => null);
+    if (response.status === 401 && sessionToken) {
+      logout("Tu sesión venció. Vuelve a iniciar sesión.");
+    }
+    if (!response.ok) throw new Error(data?.message || "No se pudo completar la operación.");
+    return data;
+  }
+
+  function render() {
+    const query = byId("search").value.trim().toLocaleLowerCase("es");
+    const status = byId("filter").value;
+    const matching = items.filter((item) =>
+      (!status || item.status === status) &&
+      (item.name + " " + (item.description || "")).toLocaleLowerCase("es").includes(query)
+    );
+    const list = byId("list");
+    list.replaceChildren();
+    for (const item of matching) {
+      const row = document.createElement("li");
+      const summary = document.createElement("div");
+      const name = document.createElement("strong");
+      const details = document.createElement("small");
+      name.textContent = item.name;
+      details.textContent = item.description ? states[item.status] + " · " + item.description : states[item.status];
+      summary.append(name, details);
+      row.append(summary);
+      if (item.status !== "delivered") {
+        const action = document.createElement("button");
+        action.type = "button";
+        action.className = "secondary";
+        action.textContent = "Marcar entregado";
+        action.setAttribute("aria-label", "Marcar como entregado: " + item.name);
+        action.addEventListener("click", () => buttons(action, () => deliver(item)));
+        row.append(action);
+      }
+      list.append(row);
+    }
+    const empty = byId("empty");
+    empty.hidden = matching.length > 0;
+    empty.textContent = items.length ? "No hay objetos que coincidan con los filtros." : "No hay objetos registrados.";
+  }
+
+  async function buttons(button, action) {
+    button.disabled = true;
+    try { await action(); }
+    catch (error) { if (token) message(error.message, true); }
+    finally { button.disabled = false; }
+  }
+
+  async function refresh() {
+    const version = ++revision;
+    const result = await request(objectsPath);
+    if (version === revision) {
+      items = result;
+      render();
+    }
+  }
+
+  async function deliver(item) {
+    if (!confirm("¿Marcar como entregado «" + item.name + "»?")) return;
+    const result = await request(objectsPath + "/" + encodeURIComponent(item.id) + "/deliver", { method: "POST" });
+    revision++;
+    items = items.map((entry) => entry.id === result.id ? result : entry);
+    render();
+    message("Objeto marcado como entregado.");
+  }
+
+  byId("login").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const submit = form.querySelector("button");
+    submit.disabled = true;
+    byId("login-error").textContent = "";
+    try {
+      const body = Object.fromEntries(new FormData(form));
+      const result = await request("/v1/admin/login", { method: "POST", body });
+      token = result.accessToken;
+      form.reset();
+      message("");
+      showInventory(true);
+      byId("search").focus();
+      await refresh();
+    } catch (error) {
+      if (token) message(error.message, true);
+      else if (!byId("login-error").textContent) byId("login-error").textContent = error.message;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+
+  byId("register").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    buttons(form.querySelector("button"), async () => {
+      const body = Object.fromEntries(new FormData(form));
+      const item = await request(objectsPath, { method: "POST", body });
+      revision++;
+      items.unshift(item);
+      render();
+      form.reset();
+      message("Objeto registrado en el inventario.");
+    });
+  });
+
+  byId("logout").addEventListener("click", () => logout());
+  byId("search").addEventListener("input", render);
+  byId("filter").addEventListener("change", render);
+  byId("reload").addEventListener("click", (event) => buttons(event.currentTarget, refresh));
+</script>
+</html>

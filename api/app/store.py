@@ -17,6 +17,7 @@ class LostObject:
     claimed_by: str | None = None
     description: str | None = None
     reported_by: str | None = None
+    delivered: bool = False
 
 
 def default_objects() -> list[LostObject]:
