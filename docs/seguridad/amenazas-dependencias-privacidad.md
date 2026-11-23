@@ -1,4 +1,4 @@
-# Amenazas, dependencias y privacidad — LostVault
+ Amenazas, dependencias y privacidad — LostVault
 
 Fecha: 2026-11-01. Alcance: API FastAPI de `backend/` (desplegada en el servidor que exige la universidad, https://panel.iscoutb.dev/) y su relación con el cliente Flutter.
 
@@ -12,13 +12,13 @@ Prioridad = probabilidad (1–3) × impacto (1–3). Alta ≥ 6, Media 3–5, Ba
 |---|---|---|---|---|---|---|---|---|
 | A1 | **Suplantación por verificación de identidad débil.** Cualquier token válido con `sub` no vacío puede reclamar un objeto. | `verify_identity()` en `backend/main.py` devuelve `bool(user_id.strip())` | 3 | 3 | **9 Alta** | Integrar una verificación real de identidad y registrarla en un ADR; hasta entonces, declarar el límite en `docs/aspectos.md` | José Faustino | Pendiente |
 | A2 | **Suplantación con token forjado o robado.** Quien obtenga `JWT_SECRET` puede emitir sesiones válidas, y no hay revocación de tokens. | `exp` ya es obligatorio en el JWT de `backend/main.py` (registro S12 de `docs/ia.md`, con dos pruebas). El riesgo restante es el secreto | 1 | 3 | **3 Media** | Secreto aleatorio de al menos 32 bytes guardado solo en variables de entorno del servidor (nunca en el repositorio), TTL corto y rotación del secreto; comprobar en el código que `exp` sigue exigido | Shamara | Parcial: `exp` obligatorio; **por confirmar** dónde se configura `JWT_SECRET` en el panel |
-| A3 | **Repudio por pérdida de rastro.** Las reclamaciones viven en memoria y se pierden en cada reinicio del proceso o del servidor. | `_claims: list` en `backend/main.py` | 3 | 2 | **6 Alta** | Base de datos con tabla de reclamaciones y marca de tiempo (PostgreSQL si el servidor de la universidad la ofrece) | Shamara | Pendiente; **por confirmar** si hay base de datos disponible en el panel |
+| A3 | **Repudio por pérdida de rastro.** Las reclamaciones viven en memoria y se pierden en cada reinicio del proceso o del servidor. | `_claims` en `backend/main.py` es un diccionario en memoria; el código no contiene conexión a ninguna base de datos | 3 | 2 | **6 Alta** | Usar la base de datos que ofrece el servidor de la universidad (tabla de reclamaciones con marca de tiempo) y conectar el backend a ella | Shamara | Pendiente: la base de datos existe en el servidor, pero el backend todavía no la usa |
 | A4 | **Denegación de servicio por agotamiento.** No hay límite de tasa en la aplicación. Antecedente: en una prueba de carga con 200 conexiones contra `/objects` (medida con autocannon sobre el despliegue en Vercel) falló el 44 % de las peticiones y Vercel bloqueó el tráfico con un 403. | Medición con autocannon contra `/objects` (Vercel, antes del cambio de servidor) | 3 | 2 | **6 Alta** | Límite de tasa en la aplicación o en el proxy inverso del servidor, caché del catálogo (cabeceras ya implementadas en S12) y pruebas de carga solo contra un entorno de pruebas y con el permiso de quien administra el servidor de la universidad | Shamara | Parcial: cabeceras de caché implementadas; falta límite de tasa. La prueba de carga **no se ha repetido** contra panel.iscoutb.dev |
-| A5 | **Doble reclamación entre procesos.** Si el servidor ejecuta más de un proceso (workers) de la API, cada uno tiene su propio candado y pueden aceptar el mismo objeto. | Candado en memoria (`_lock`) que no se comparte entre procesos | 2 | 2 | **4 Media** | `UNIQUE(object_id)` en la base de datos; mientras tanto, ejecutar un solo proceso, idempotencia y candado por proceso | José Faustino | Riesgo aceptado; **por confirmar** cuántos workers corren |
+| A5 | **Doble reclamación entre procesos.** Si el servidor ejecuta más de un proceso (workers) de la API, cada uno tiene su propio candado y pueden aceptar el mismo objeto. | Candado en memoria (`_lock`) que no se comparte entre procesos | 2 | 2 | **4 Media** | `UNIQUE(object_id)` en la base de datos cuando el backend la use; mientras tanto, ejecutar un solo proceso, idempotencia y candado por proceso | José Faustino | Riesgo aceptado; **por confirmar** cuántos workers corren |
 | A6 | **Dependencia con vulnerabilidades conocidas.** PyJWT 2.7.0 es de 2023. | `backend/requirements.txt`; detalle en la sección 2 | 2 | 2 | **4 Media** | Subir PyJWT a 2.15.0 o superior, correr `pytest` y añadir `pip-audit` a `backend.yml` | Roy | Pendiente |
 | A7 | **Secretos en un repositorio público.** | `JWT_SECRET` se lee solo de `os.environ`; el `Dockerfile` no lo define; el CI usa un secreto de prueba | 1 | 3 | **3 Media** | Activar secret scanning y push protection en GitHub; no versionar archivos `.env` | Weller | Verificado; falta activar el escaneo |
 | A8 | **CORS demasiado abierto.** Se acepta cualquier origen con `allow_credentials=True`. | `CORSMiddleware` en `backend/main.py`; `test_cors_headers_present` confirma que se refleja el origen | 2 | 1 | **2 Baja** | Limitar a la URL de GitHub Pages y a `localhost`. El riesgo es bajo porque la sesión viaja en la cabecera `Authorization`, no en cookies | Shamara | Pendiente |
-| A9 | **Exposición de superficie.** `/docs` y `/metrics` son públicos y la diferencia entre 404 y 409 revela el estado de un objeto. | Rutas de `backend/main.py` | 2 | 1 | **2 Baja** | Aceptar: el catálogo ya es público por diseño; proteger `/metrics` cuando exista base de datos | Roy | Aceptado |
+| A9 | **Exposición de superficie.** `/docs` y `/metrics` son públicos y la diferencia entre 404 y 409 revela el estado de un objeto. | Rutas de `backend/main.py` | 2 | 1 | **2 Baja** | Aceptar: el catálogo ya es público por diseño; proteger `/metrics` cuando el backend use la base de datos | Roy | Aceptado |
 | A10 | **Elevación de privilegios por acceso al panel o al servidor.** Quien tenga las credenciales del panel puede redesplegar, leer variables de entorno (incluido `JWT_SECRET`) y alterar la API. | Despliegue en https://panel.iscoutb.dev/ (valoración provisional, sin evidencia en el código) | 2 | 3 | **6 Alta** | Credenciales del panel individuales y no compartidas por chat, lista corta de quienes pueden redesplegar, verificar que el servidor sirva solo por HTTPS y rotar `JWT_SECRET` si alguien sale del equipo | Weller | **Por confirmar:** quién tiene acceso al panel, si hay HTTPS forzado y si el panel ofrece segundo factor |
 
 ## 2. Resultado del análisis de dependencias
@@ -73,7 +73,7 @@ Marco de referencia: Ley 1581 de 2012 (protección de datos personales en Colomb
 - **Minimización.** La API solo conoce el `sub` del token. No guarda correo ni nombre, y así se mantiene hasta que un escenario justifique más.
 - **Logs.** El formateador JSON escribe una lista cerrada de campos (`request_id`, `endpoint`, `method`, `status_code`, `duration_ms`, `event`) y registra la ruta con `{object_id}`, no la real. La prueba `test_logs_never_contain_the_token` garantiza que el token no aparece.
 - **Repositorio público.** Solo se versionan datos de prueba: nunca datos reales de estudiantes ni capturas con correos reales. Lo mismo aplica a lo que se pegue en herramientas de IA y a `docs/ia.md`.
-- **Retención.** Hoy los datos viven en memoria y se pierden al reiniciar, lo que limita la retención pero elimina el rastro (A3). Al pasar a una base de datos se fija por escrito el plazo de conservación de las reclamaciones.
+- **Retención.** Hoy los datos viven en memoria y se pierden al reiniciar, lo que limita la retención pero elimina el rastro (A3). Cuando el backend use la base de datos del servidor, se fija por escrito el plazo de conservación de las reclamaciones.
 - **Ubicación del tratamiento.** La API corre en el servidor de la universidad, que queda como infraestructura institucional y no en un proveedor externo de nube. Dónde está físicamente el servidor y quién lo administra **está por confirmar**; si resulta estar en Colombia y bajo la universidad, se reduce la preocupación por transferencia internacional que existía con Vercel. Los registros del servidor (accesos, IP) los controla quien administra el panel, y conviene saber por cuánto tiempo los conserva.
 
 ### Brechas conocidas
@@ -89,11 +89,10 @@ Marco de referencia: Ley 1581 de 2012 (protección de datos personales en Colomb
 Estos puntos dependen del servidor de la universidad y no se pueden deducir del repositorio:
 
 1. Dónde y cómo se configura `JWT_SECRET` en el panel (A2).
-2. Si hay base de datos disponible y de qué tipo (A3).
-3. Cuántos procesos o workers ejecutan la API (A5).
-4. Si el servidor fuerza HTTPS y si el panel tiene segundo factor; quién tiene acceso (A10).
-5. Ubicación física del servidor y política de registros (sección 3).
-6. Si se repetirá la prueba de carga contra panel.iscoutb.dev y con qué permiso (A4).
+2. Cuántos procesos o workers ejecutan la API (A5).
+3. Si el servidor fuerza HTTPS y si el panel tiene segundo factor; quién tiene acceso (A10).
+4. Ubicación física del servidor y política de registros (sección 3).
+5. Si se repetirá la prueba de carga contra panel.iscoutb.dev y con qué permiso (A4).
 
 ## Fuentes
 
