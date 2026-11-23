@@ -2,7 +2,7 @@
 
 Evidencia S8 — Despliegue y operación
 
-## 1. Dónde vive cada pieza (decisión previa al costo)
+## 1. Dónde vive cada pieza
 
 Siguiendo la advertencia de la guía ("elegir la plataforma antes que el escenario" es
 el primer error frecuente), esta decisión se toma primero, pieza por pieza, y el
@@ -10,11 +10,11 @@ costo es consecuencia de ella, no al revés.
 
 | Pieza | Dónde se ejecuta | Criterio que lo decide |
 |---|---|---|
-| Sitio (Flutter web) | GitHub Pages | Estático, repo público → gratis, sin tarjeta |
-| API (FastAPI, `objects`/`claims`) | Vercel (función serverless, Python 3.12) | Plan Hobby gratuito y sin tarjeta; URL pública accesible desde fuera de la universidad; despliegue con `npx vercel --prod` o desde Git. El tráfico esperado es bajo y esporádico, lo que encaja con un modelo por invocación |
+| Sitio (Flutter web) | Local y compilado en CI | Sin hosting público en este corte |
+| API (FastAPI, `objects`/`claims`) | [Vercel](https://backend-nu-self-91.vercel.app) (función serverless, Python 3.12) | Plan Hobby gratuito y sin tarjeta; URL pública accesible desde fuera de la universidad; despliegue con `npx vercel --prod` o desde Git. El tráfico esperado es bajo y esporádico, lo que encaja con un modelo por invocación |
 | Datos (`objects`, `claims`) | En memoria del proceso de la API | En este corte no hay base de datos externa. Los datos no persisten entre instancias ni reinicios (ver limitaciones, sección 2) |
 | Ficheros/objetos | No aplica en este corte | El modelo `LostObject` actual no tiene campo de foto; si se agrega, iría a almacenamiento de objetos (nunca al disco de la función, que es de solo lectura salvo `/tmp`) |
-| Trabajos programados | GitHub Actions `schedule` (si aplica) | Los cron de Vercel Hobby se limitan a una ejecución por día; Actions no tiene ese tope en repos públicos |
+| Trabajos programados | Sin configurar | El publicador de eventos permanece como diseño |
 | Pipeline | GitHub Actions | Repo público → no consume cuota de minutos |
 
 **Alternativa considerada: Render (plan gratuito).** Corre la API como proceso continuo,
@@ -39,7 +39,9 @@ calculado sobre una ventana deslizante de las últimas peticiones. Cada petició
 además un log JSON con `endpoint`, `status_code` y `duration_ms`, y un encabezado
 `X-Request-Id` para trazabilidad.
 
-**Limitaciones que hay que declarar:**
+**Resultado S14:** [la medición](../medicion/s14-medicion-atributos.md) observó p95 de ~1.870 ms en estado estable y 2.279 ms en la primera ráfaga.
+
+**Limitaciones:**
 
 - Las mediciones viven en la memoria de cada instancia de la función. Con más de una
   instancia, o tras un reinicio o archivado, el p95 de `/metrics` cambia o se reinicia,
@@ -58,7 +60,7 @@ Los cuatro números que pide la guía, con supuestos explícitos:
 
 | # | Número | Supuesto usado | Fuente del supuesto |
 |---|---|---|---|
-| 1 | Operaciones al mes | ~500 usuarios activos × ~10 búsquedas + ~1 publicación cada uno ≈ **6.000 invocaciones/mes** | Estimado; ajustar con el tamaño real esperado de usuarios de la UTB |
+| 1 | Operaciones al mes | ~500 usuarios activos × ~12 solicitudes de consulta o reclamación ≈ **6.000 invocaciones/mes** | Estimado; ajustar con el tamaño real esperado de usuarios de la UTB |
 | 2 | Tamaño de datos almacenados | `LostObject` sin foto (id, title, description, status) < 1 KB/registro → **pocos MB acumulados, en memoria** | Modelo real en `lost_object.dart` |
 | 3 | Tráfico de salida | Respuestas JSON pequeñas, sin imágenes → **decenas de MB/mes** | Derivado de (2) |
 | 4 | Tiempo de ejecución | Modelo por invocación: CPU activa ≈ 50 ms por petición × 6.000 ≈ **5 minutos de CPU al mes** (0,08 h) | Supuesto de 50 ms por petición; la espera de E/S no cuenta como CPU activa |
@@ -71,8 +73,7 @@ la verificación se repite y se registra en el ADR de plataforma.
 
 **Resultado (como indica la guía, el resultado esperado es cero):** con ~6.000
 invocaciones al mes se usa cerca del 0,6 % de la cuota de invocaciones y ~2 % de la de
-CPU activa. El costo mensual es **$0** para la API (Vercel Hobby) y para el sitio
-(GitHub Pages).
+CPU activa. El costo mensual estimado es **$0** para la API dentro de los supuestos y cuotas de Hobby registrados en S8. Flutter local y el publicador propuesto carecen de costos de hosting en este corte.
 
 **Punto de cruce (dónde deja de ser gratis):**
 

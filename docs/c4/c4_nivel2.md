@@ -6,9 +6,11 @@ Diagrama como código (Mermaid, se ve directamente en GitHub). Es la versión
 desde la web y las notificaciones— y le agrega la estrategia de datos de la S12:
 caché, base de datos según el ADR 0006 y el publicador de eventos.
 
+El despliegue público corresponde a [LostVault API en Vercel](https://backend-nu-self-91.vercel.app). Flutter usa adaptadores locales. Las relaciones HTTP entre Flutter y la API se muestran como parte del diseño de integración.
+
 Cada almacén de datos y el mecanismo de mensajería aparecen como **contenedores
 propios**. Línea continua = existe hoy; línea punteada = decidido en un ADR,
-pendiente de implementar.
+pendiente de implementar o integrar.
 
 ```mermaid
 flowchart TB
@@ -28,11 +30,11 @@ flowchart TB
 
     student -->|"Busca, publica y reclama - HTTPS"| mobile
     staff -->|"Administra objetos - HTTPS"| web
-    mobile -->|"GET /objects"| cdn
-    web -->|"GET /objects"| cdn
+    mobile -.->|"GET /objects"| cdn
+    web -.->|"GET /objects"| cdn
     cdn -->|"Fallo de cache o revalidacion"| api
-    mobile -->|"POST /v1/objects/id/claims, no-store"| api
-    web -->|"Gestion de objetos, no-store"| api
+    mobile -.->|"POST /v1/objects/id/claims, no-store"| api
+    web -.->|"Gestion de objetos, prevista"| api
     api -.->|"Transaccion local: reclamo + clave + evento - SQL"| db
     publisher -.->|"Lee eventos pendientes - SQL"| db
     publisher -.->|"ClaimCreated / ClaimRejected"| mail
@@ -46,10 +48,12 @@ flowchart TB
 |---|---|---|---|
 | Aplicación móvil | Flutter | Corre en local; adaptadores in-memory | [ADR 0001](../adr/0001-estilo-arquitectonico.md) |
 | Aplicación web | Flutter web (mismo código base) | Corre en local (`flutter run -d chrome`); no publicada | [ADR 0001](../adr/0001-estilo-arquitectonico.md), [arc42 §7](../arc42/07_vista_despliegue.md) |
-| Caché HTTP | CDN de Vercel (cabeceras `Cache-Control`) | Implementado en `backend/main.py` | [cache.md](../datos/cache.md) |
-| API LostVault | FastAPI en Vercel | Desplegado | [ADR 0002](../adr/0002-integracion-reclamacion-api.md), [ADR 0003](../adr/0003-plataforma-despliegue-vercel.md) |
+| Caché HTTP | CDN de Vercel (cabeceras `Cache-Control`) | Cabeceras implementadas. S14 observó `MISS` en la CDN. | [cache.md](../datos/cache.md) |
+| API LostVault | FastAPI en Vercel | [Desplegado](https://backend-nu-self-91.vercel.app) | [ADR 0002](../adr/0002-integracion-reclamacion-api.md), [ADR 0003](../adr/0003-plataforma-despliegue-vercel.md) |
 | Base de datos | PostgreSQL gestionado | Decidido, pendiente | [ADR 0006](../adr/0006-postgresql-fuente-de-verdad.md) |
 | Publicador de outbox | Trabajo programado (GitHub Actions `schedule:` o Vercel Cron) | Diseñado | [eventos.md](../datos/eventos.md) |
+
+[C4 nivel 3 · Componentes de la API](c4_nivel3.md)
 
 Notas:
 

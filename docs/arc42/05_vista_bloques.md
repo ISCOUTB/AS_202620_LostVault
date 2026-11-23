@@ -25,6 +25,8 @@ lib/features/<modulo>/
 └── public/          → lo único que otros módulos pueden importar de este módulo
 ```
 
+La [vista C4 nivel 3 de la API desplegada](../c4/c4_nivel3.md) amplía la estructura del backend.
+
 ## Regla de dependencia
 
 Un módulo solo puede importar el paquete `public/` de otro módulo. Nunca puede acceder directamente a su `domain/`, `application/` o `infrastructure/` interno. Esta regla es la que mantiene los módulos desacoplados entre sí, evitando que el sistema degenere en un monolito fuertemente acoplado.
