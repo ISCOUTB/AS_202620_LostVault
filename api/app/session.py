@@ -20,15 +20,16 @@ from app.config import (
 )
 from app.errors import ApiError
 from app.models import TokenResponse
+from app.store import ClaimStore
 
 
 def _invalid() -> ApiError:
     return ApiError(401, "INVALID_CREDENTIALS", "Correo o contraseña incorrectos.")
 
 
-def login(email: str, password: str) -> TokenResponse:
+def login(email: str, password: str, store: ClaimStore) -> TokenResponse:
     configured = single_user()
-    return _login(email, password, configured, role="student")
+    return _login(email, password, configured, role="student", store=store)
 
 
 def login_admin(email: str, password: str) -> TokenResponse:
@@ -41,6 +42,7 @@ def _login(
     configured: tuple[str, str, str] | None,
     *,
     role: str,
+    store: ClaimStore | None = None,
 ) -> TokenResponse:
     if configured is None:
         raise ApiError(
@@ -61,11 +63,18 @@ def _login(
     if not (email_ok and password_ok):
         raise _invalid()
 
+    version = 0
+    if store is not None:
+        suspended, version = store.user_session(user_id)
+        if suspended:
+            raise ApiError(403, "FORBIDDEN", "La cuenta está suspendida.")
+
     expires_in = jwt_expires_minutes() * 60
     token = jwt.encode(
         {
             "sub": user_id,
             "role": role,
+            "session_version": version,
             "email": user_email.strip().lower(),
             "exp": int(time.time()) + expires_in,
         },

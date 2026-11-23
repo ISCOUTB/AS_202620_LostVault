@@ -36,6 +36,16 @@
   .list small { display:block; color:#4d6870; }
   .list strong { display:block; }
   .list button { flex-shrink:0; }
+  .stats { display:flex; flex-wrap:wrap; gap:12px; margin:18px 0; }
+  .stats span { background:#e2f0ea; color:#174a40; border-radius:8px; padding:8px 12px; }
+  .workspace { margin-top:22px; }
+  .action-set { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .list details { margin-top:8px; }
+  .list summary { cursor:pointer; color:#086454; }
+  .list details p { margin:4px 0; font-size:.9rem; }
+  .list a { color:#086454; }
+  .inline-controls { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0; }
+  .subtle { background:#eaf2f0; color:#294951; border:1px solid #c7dad4; }
   @media(max-width:760px) { .layout { grid-template-columns:1fr; } }
   @media(max-width:420px) { .wrap { width:calc(100% - 24px); } .sheet { padding:16px; } .list li { align-items:start; flex-direction:column; } }
 </style>
@@ -54,12 +64,14 @@
   <section id="inventory" hidden>
     <h1>Inventario de objetos</h1>
     <p id="notice" class="status" role="status" aria-live="polite"></p>
+    <div id="stats" class="stats" aria-label="Resumen del inventario"></div>
+    <div class="inline-controls"><button id="pending" type="button" class="secondary">Ver reclamaciones pendientes</button><button id="all-items" type="button" class="secondary">Ver todo el inventario</button></div>
     <div class="layout">
       <section class="sheet">
         <h2>Objetos registrados</h2>
         <div class="filters">
           <label>Buscar<input id="search" type="search" placeholder="Nombre o descripción"></label>
-          <label>Estado<select id="filter"><option value="">Todos</option><option value="available">Disponible</option><option value="claimed">Reclamado</option><option value="delivered">Entregado</option></select></label>
+          <label>Estado<select id="filter"><option value="">Todos</option><option value="available">Disponible</option><option value="claimed">Pendiente de revisión</option><option value="approved">Aprobado</option><option value="delivered">Entregado</option></select></label>
         </div>
         <ul id="list" class="list"></ul>
         <p id="empty" class="hint" hidden></p>
@@ -69,17 +81,25 @@
         <h2>Registrar objeto recibido</h2>
         <label>Nombre<input name="name" required maxlength="120"></label>
         <label>Descripción<textarea name="description" maxlength="1000"></textarea></label>
+        <label>Lugar del hallazgo<input name="foundAt" maxlength="160"></label>
+        <label>Ubicación en la oficina<input name="location" maxlength="160"></label>
+        <label>Enlace HTTPS a la foto<input name="photoUrl" type="url" pattern="https://.+" maxlength="2083"></label>
         <button>Registrar objeto</button>
       </form>
     </div>
+    <section class="sheet workspace">
+      <h2>Acceso de estudiantes</h2>
+      <ul id="users" class="list"></ul>
+    </section>
   </section>
 </main>
 <script>
   const byId = (id) => document.getElementById(id);
-  const states = { available: "Disponible", claimed: "Reclamado", delivered: "Entregado" };
+  const states = { available: "Disponible", claimed: "Pendiente de revisión", approved: "Aprobado", delivered: "Entregado" };
   const objectsPath = "/v1/admin/objects";
   let token = "";
   let items = [];
+  let users = [];
   let revision = 0;
 
   function message(text, error = false) {
@@ -97,7 +117,9 @@
     token = "";
     revision++;
     items = [];
+    users = [];
     render();
+    renderUsers();
     byId("register").reset();
     showInventory(false);
     byId("login-error").textContent = error;
@@ -130,6 +152,13 @@
     );
     const list = byId("list");
     list.replaceChildren();
+    const stats = byId("stats");
+    stats.replaceChildren();
+    for (const [key, label] of Object.entries(states)) {
+      const stat = document.createElement("span");
+      stat.textContent = label + " · " + items.filter((item) => item.status === key).length;
+      stats.append(stat);
+    }
     for (const item of matching) {
       const row = document.createElement("li");
       const summary = document.createElement("div");
@@ -138,21 +167,98 @@
       name.textContent = item.name;
       details.textContent = item.description ? states[item.status] + " · " + item.description : states[item.status];
       summary.append(name, details);
-      row.append(summary);
-      if (item.status !== "delivered") {
-        const action = document.createElement("button");
-        action.type = "button";
-        action.className = "secondary";
-        action.textContent = "Marcar entregado";
-        action.setAttribute("aria-label", "Marcar como entregado: " + item.name);
-        action.addEventListener("click", () => buttons(action, () => deliver(item)));
-        row.append(action);
+      const info = document.createElement("details");
+      const caption = document.createElement("summary");
+      caption.textContent = "Ficha e historial";
+      info.append(caption);
+      const date = (value) => value ? new Date(value).toLocaleString("es-CO") : "Sin registro";
+      const facts = [
+        ["Hallazgo", item.foundAt], ["Ubicación", item.location], ["Recepción", date(item.receivedAt)],
+        ["Solicitante", item.claimedBy]
+      ];
+      for (const [label, value] of facts) {
+        if (!value) continue;
+        const line = document.createElement("p");
+        line.textContent = label + " · " + value;
+        info.append(line);
       }
+      if (item.photoUrl?.startsWith("https://")) {
+        const photo = document.createElement("a");
+        photo.href = item.photoUrl;
+        photo.target = "_blank";
+        photo.rel = "noopener noreferrer";
+        photo.textContent = "Ver foto";
+        info.append(photo);
+      }
+      for (const entry of item.history || []) {
+        const line = document.createElement("p");
+        line.textContent = date(entry.at) + " · " + entry.action + " · " + entry.actor
+          + (entry.reason ? " · " + entry.reason : "");
+        info.append(line);
+      }
+      summary.append(info);
+      row.append(summary);
+      const actions = document.createElement("div");
+      actions.className = "action-set";
+      if (item.status === "claimed") {
+        addAction(actions, "Aprobar", () => review(item, "approve"));
+        addAction(actions, "Rechazar", () => review(item, "reject"));
+      } else if (item.status === "approved") {
+        addAction(actions, "Marcar entregado", () => deliver(item));
+      }
+      if (actions.childElementCount) row.append(actions);
       list.append(row);
     }
     const empty = byId("empty");
     empty.hidden = matching.length > 0;
     empty.textContent = items.length ? "No hay objetos que coincidan con los filtros." : "No hay objetos registrados.";
+  }
+
+  function addAction(container, label, action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "secondary";
+    button.textContent = label;
+    button.addEventListener("click", () => buttons(button, action));
+    container.append(button);
+  }
+
+  function renderUsers() {
+    const list = byId("users");
+    list.replaceChildren();
+    if (!users.length) {
+      const row = document.createElement("li");
+      row.textContent = "No hay cuentas estudiantiles configuradas.";
+      list.append(row);
+    }
+    for (const user of users) {
+      const row = document.createElement("li");
+      const name = document.createElement("span");
+      name.textContent = user.email + (user.suspended ? " · Suspendido" : " · Activo");
+      row.append(name);
+      addAction(row, user.suspended ? "Reactivar" : "Suspender", async () => {
+        if (!user.suspended && !confirm("¿Suspender la cuenta e invalidar sus sesiones?")) return;
+        const updated = await request("/v1/admin/users/" + encodeURIComponent(user.id) + "/suspension", {
+          method: "POST", body: {suspended: !user.suspended}
+        });
+        users = users.map((entry) => entry.id === updated.id ? updated : entry);
+        renderUsers();
+        message(updated.suspended ? "Cuenta suspendida." : "Cuenta reactivada.");
+      });
+      list.append(row);
+    }
+  }
+
+  async function review(item, decision) {
+    const reason = decision === "reject" ? prompt("Motivo del rechazo") : "";
+    if (decision === "reject" && !reason?.trim()) return;
+    const result = await request(objectsPath + "/" + encodeURIComponent(item.id) + "/review", {
+      method: "POST", body: {decision, reason}
+    });
+    revision++;
+    items = items.map((entry) => entry.id === result.id ? result : entry);
+    render();
+    message(decision === "approve" ? "Reclamación aprobada." : "Reclamación rechazada.");
   }
 
   async function buttons(button, action) {
@@ -195,6 +301,8 @@
       showInventory(true);
       byId("search").focus();
       await refresh();
+      users = await request("/v1/admin/users");
+      renderUsers();
     } catch (error) {
       if (token) message(error.message, true);
       else if (!byId("login-error").textContent) byId("login-error").textContent = error.message;
@@ -208,6 +316,7 @@
     const form = event.currentTarget;
     buttons(form.querySelector("button"), async () => {
       const body = Object.fromEntries(new FormData(form));
+      if (!body.photoUrl) delete body.photoUrl;
       const item = await request(objectsPath, { method: "POST", body });
       revision++;
       items.unshift(item);
@@ -217,6 +326,8 @@
     });
   });
 
+  byId("pending").addEventListener("click", () => { byId("filter").value = "claimed"; render(); });
+  byId("all-items").addEventListener("click", () => { byId("filter").value = ""; render(); });
   byId("logout").addEventListener("click", () => logout());
   byId("search").addEventListener("input", render);
   byId("filter").addEventListener("change", render);

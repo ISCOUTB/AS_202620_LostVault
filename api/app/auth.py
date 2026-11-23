@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 import jwt
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.config import jwt_algorithm, jwt_secret
@@ -29,6 +29,7 @@ def _unauthenticated(message: str) -> ApiError:
 
 
 def current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
 ) -> AuthenticatedUser:
     if credentials is None or credentials.scheme.lower() != "bearer":
@@ -48,11 +49,16 @@ def current_user(
     if not isinstance(sub, str) or not sub.strip():
         raise _unauthenticated("Token inválido.")
 
+    is_admin = payload.get("role") == "admin"
+    if not is_admin:
+        suspended, version = request.app.state.store.user_session(sub)
+        if suspended or payload.get("session_version", 0) != version:
+            raise _unauthenticated("La sesión ya no está activa.")
     email = payload.get("email")
     return AuthenticatedUser(
         id=sub,
         email=email if isinstance(email, str) else None,
-        is_admin=payload.get("role") == "admin",
+        is_admin=is_admin,
     )
 
 

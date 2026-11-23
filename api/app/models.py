@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class Claim(BaseModel):
@@ -70,4 +70,25 @@ class InventoryItem(BaseModel):
     id: str
     name: str
     description: str | None
-    status: Literal["available", "claimed", "delivered"]
+    status: Literal["available", "claimed", "approved", "delivered"]
+    claimedBy: str | None = None
+    foundAt: str | None = None
+    location: str | None = None
+    photoUrl: str | None = None
+    receivedAt: str | None = None
+    history: list[dict[str, str]] = Field(default_factory=list)
+
+
+class IntakeRequest(CreateObjectRequest):
+    foundAt: str | None = Field(default=None, max_length=160)
+    location: str | None = Field(default=None, max_length=160)
+    photoUrl: HttpUrl | None = None
+
+
+class ReviewRequest(BaseModel):
+    decision: Literal["approve", "reject"]
+    reason: str = Field(default="", max_length=500)
+
+
+class SuspensionRequest(BaseModel):
+    suspended: bool
