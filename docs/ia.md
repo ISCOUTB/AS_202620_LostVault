@@ -326,3 +326,22 @@ Rechazado:
 
 Limitaciones: ver la sección "Límites del experimento" de `docs/mensajeria/taller-mensajeria.md`.
 
+## Registro S13 — 2026-11-01
+
+Se utilizó IA (Claude) para redactar la tabla de amenazas priorizadas, el análisis de dependencias y la sección de privacidad de la entrega de seguridad (`docs/seguridad/amenazas-dependencias-privacidad.md`). La IA no tiene acceso directo al repositorio: trabajó con los archivos que el equipo le compartió (`backend/main.py` y `backend/test_api.py`, `requirements.txt`, el `Dockerfile`, `mapa_contextos.md` y este mismo `docs/ia.md`).
+
+Trabajo realizado y motivo:
+
+- Se construyó la tabla de nueve amenazas (STRIDE), priorizadas por probabilidad × impacto, cada una con su evidencia en el repositorio, su mitigación y un responsable propuesto. Las dos de mayor prioridad salen de leer el código: `verify_identity()` acepta cualquier `sub` no vacío (A1), y las reclamaciones viven en memoria y se pierden en cada arranque en frío (A3).
+- Se consultaron manualmente OSV, GitLab Advisory Database y bases públicas de CVE para `fastapi`, `uvicorn` y `PyJWT`. Se concluyó que `PyJWT==2.7.0` está por debajo de varias correcciones y se recomendó subir a 2.15.0 o superior. Para decidir cuáles CVE aplican a LostVault, la IA razonó según cómo usa la librería `main.py` (HS256 con algoritmo fijo, secreto en el entorno, sin `PyJWKClient`); esa lectura es un juicio de la IA y no una prueba.
+- Se redactó la sección de privacidad bajo la Ley 1581 de 2012: datos personales que trata el sistema, decisiones (minimización, logs con lista cerrada de campos, retención, ubicación del tratamiento en EE. UU. por la región de Vercel) y cuatro brechas abiertas (aviso de privacidad, derechos del titular, plazo de retención y evidencia de identidad).
+
+Aceptado: la tabla, el análisis y la sección de privacidad, pendientes de revisión del equipo. Los responsables de cada mitigación son una propuesta y deben confirmarse.
+
+Rechazado: la primera versión del documento incluía una lista de pendientes y referencias a evidencias anteriores; el equipo pidió dejar solo lo que pide la entrega (amenazas, dependencias y privacidad).
+
+Limitaciones:
+
+- La IA no pudo ejecutar `pip-audit`, así que la consulta de vulnerabilidades fue manual. La versión de Starlette instalada no se comprobó, no se analizaron las dependencias de Dart y quedaron fuera `mensajeria/`, `api/` (riesgo R10) y `requirements-dev.txt`.
+- La primera redacción de la fila A2 daba por cierto que el JWT no exigía `exp`, porque la IA leyó la versión de `main.py` de principios de octubre, anterior a los cambios de S11 y S12. El registro S12 indica que `exp` ya es obligatorio, y la fila se corrigió: la prioridad bajó de Alta a Media y el riesgo restante es la custodia de `JWT_SECRET`. La fila A4 se actualizó por la misma razón (las cabeceras de caché ya existen; falta el límite de tasa).
+
