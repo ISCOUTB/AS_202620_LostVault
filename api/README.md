@@ -25,7 +25,7 @@ Los errores tienen la forma `{"code": "...", "message": "..."}`.
 
 ## Configuración
 
-Copia `.env.example` a `.env` y define al menos `JWT_SECRET`.
+Define `JWT_SECRET` como variable de entorno del servicio.
 
 | Variable | Descripción | Por defecto |
 |----------|-------------|-------------|
@@ -86,3 +86,21 @@ docker run --rm -p 8000:8000 -e JWT_SECRET=un-secreto-largo lostvault-api
   `app/store.py` por una base de datos.
 - Con un solo proceso la idempotencia es consistente; con varias réplicas
   necesitarías almacenamiento compartido.
+
+## Panel del encargado
+
+La misma API publica la interfaz web en `/admin`. El panel usa el mismo origen
+que la API. Configure `ADMIN_EMAIL` (un correo de los dominios verificados) y
+`ADMIN_PASSWORD` como variables privadas del servicio. Use una cuenta distinta
+de la configurada para la APK y un dominio HTTPS para iniciar sesión en un
+despliegue público. Las credenciales quedan del lado del servidor.
+
+- `POST /v1/admin/login` emite el JWT del encargado.
+- `GET /v1/admin/objects` consulta el inventario.
+- `POST /v1/admin/objects` registra un objeto recibido.
+- `POST /v1/admin/objects/{object_id}/deliver` registra la entrega física.
+
+El inventario distingue disponible, reclamado y entregado. Registrar la entrega
+es idempotente y evita nuevas reclamaciones del objeto. Los datos siguen en la
+memoria del proceso y se pierden al reiniciar. Ejecute un solo proceso para la
+demo mientras el servicio use este almacén.

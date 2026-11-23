@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, Header, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import objects, service, session
+from app import admin, objects, service, session
 from app.auth import AuthenticatedUser, current_user
 from app.config import cors_origins, jwt_secret
 from app.errors import ApiError, api_error_handler, validation_error_handler
@@ -145,6 +145,7 @@ def create_app(store: ClaimStore | None = None) -> FastAPI:
             response.headers["Idempotent-Replayed"] = "true"
         return outcome.claim
 
+    app.include_router(admin.router)
     return app
 
 

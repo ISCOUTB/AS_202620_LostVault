@@ -11,6 +11,7 @@ import time
 import jwt
 
 from app.config import (
+    admin_account,
     jwt_algorithm,
     jwt_expires_minutes,
     jwt_secret,
@@ -27,6 +28,20 @@ def _invalid() -> ApiError:
 
 def login(email: str, password: str) -> TokenResponse:
     configured = single_user()
+    return _login(email, password, configured, role="student")
+
+
+def login_admin(email: str, password: str) -> TokenResponse:
+    return _login(email, password, admin_account(), role="admin")
+
+
+def _login(
+    email: str,
+    password: str,
+    configured: tuple[str, str, str] | None,
+    *,
+    role: str,
+) -> TokenResponse:
     if configured is None:
         raise ApiError(
             503,
@@ -50,6 +65,7 @@ def login(email: str, password: str) -> TokenResponse:
     token = jwt.encode(
         {
             "sub": user_id,
+            "role": role,
             "email": user_email.strip().lower(),
             "exp": int(time.time()) + expires_in,
         },

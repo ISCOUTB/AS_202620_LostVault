@@ -4,6 +4,10 @@ LostVault es una plataforma tipo Marketplace para objetos perdidos y encontrados
 
 **API pública de referencia para la entrega:** [LostVault en Vercel](https://backend-nu-self-91.vercel.app). El recorrido Flutter descrito abajo se ejecuta localmente. [Vista de despliegue](docs/arc42/07_vista_despliegue.md) · [Aspectos y evidencia](docs/aspectos.md).
 
+## Panel del encargado
+
+La implementación en `api/` sirve el [panel web y sus rutas administrativas](api/README.md#panel-del-encargado) en `/admin`. Requiere configurar la cuenta del encargado y desplegar ese servicio.
+
 ## Decisión arquitectónica
 
 **Monolito modular con aplicación selectiva de principios de arquitectura hexagonal.**

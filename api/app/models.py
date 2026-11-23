@@ -64,3 +64,10 @@ class LostObjectOut(BaseModel):
     description: str | None = None
     reportedBy: str | None = None
     claimedBy: str | None = None
+
+
+class InventoryItem(BaseModel):
+    id: str
+    name: str
+    description: str | None
+    status: Literal["available", "claimed", "delivered"]

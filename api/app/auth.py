@@ -16,6 +16,7 @@ _bearer = HTTPBearer(auto_error=False)
 class AuthenticatedUser:
     id: str
     email: str | None
+    is_admin: bool = False
 
 
 def _unauthenticated(message: str) -> ApiError:
@@ -48,4 +49,14 @@ def current_user(
         raise _unauthenticated("Token inválido.")
 
     email = payload.get("email")
-    return AuthenticatedUser(id=sub, email=email if isinstance(email, str) else None)
+    return AuthenticatedUser(
+        id=sub,
+        email=email if isinstance(email, str) else None,
+        is_admin=payload.get("role") == "admin",
+    )
+
+
+def current_admin(user: AuthenticatedUser = Depends(current_user)) -> AuthenticatedUser:
+    if not user.is_admin:
+        raise ApiError(403, "FORBIDDEN", "Se requiere una cuenta de administrador.")
+    return user
