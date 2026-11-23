@@ -8,11 +8,13 @@ Las decisiones arquitectónicas relevantes del proyecto se documentan como ADRs 
 |---|---|---|
 | [0001](../adr/0001-estilo-arquitectonico.md) | Estilo arquitectónico base de LostVault (monolito modular) | Aceptado |
 | [0002](../adr/0002-integracion-reclamacion-api.md) | Integración síncrona para crear una reclamación | Aceptado |
-| [0003](../adr/0003-plataforma-despliegue-vercel.md) | Plataforma de despliegue de la API — Vercel (funciones serverless) | Aceptado |
+| [0003](../adr/0003-plataforma-despliegue-vercel.md) | Plataforma de despliegue de la API — Vercel (funciones serverless) | Reemplazado por el ADR 0008 |
 | [000.3](../adr/000.3-despliegue-busqueda-lostvault.md) | Análisis comparativo de despliegue para búsqueda (Railway vs. GCP Cloud Functions) — ejercicio de laboratorio, no describe el sistema real desplegado | Aceptado (laboratorio) |
 | [0004](../adr/0004-no-incorporacion-componente-generativo.md) | No incorporación de un componente generativo en runtime | Aceptado |
 | [0005](../adr/0005-no-extraer-verificacion-identidad.md) | No extraer `identity_verification` a un servicio propio (todavía) — evalúa extraer vía HTTP síncrono, extraer con saga y no extraer | Aceptado |
-| [0006](../adr/0006-postgresql-fuente-de-verdad.md) | PostgreSQL gestionado como única fuente de verdad, con las invariantes en el esquema — decisión de datos más costosa de revertir (S12) | Propuesto |
+| [0006](../adr/0006-postgresql-fuente-de-verdad.md) | PostgreSQL gestionado como única fuente de verdad, con las invariantes en el esquema — decisión de datos más costosa de revertir (S12). El servidor de la universidad ofrece una base de datos, pero el backend todavía no se conecta a ella | Propuesto |
 | [0007](../adr/0007-notificacion-asincrona-outbox.md) | Notificar las reclamaciones por mensajes (outbox) y no con una llamada síncrona (Taller de mensajería) | Propuesto |
+| [0008](../adr/0008-plataforma-despliegue-universidad.md) | Plataforma de despliegue de la API — servidor de la universidad (reemplaza al ADR 0003) | Aceptado |
 
-Cada nueva decisión arquitectónica significativa (por ejemplo, extraer un módulo a un servicio independiente, o cambiar el mecanismo de verificación de identidad) se documentará como un nuevo ADR numerado consecutivamente (`0002-*.md`, `0003-*.md`, etc.), siguiendo el mismo formato: contexto, decisión, alternativas consideradas y consecuencias.
+Cada nueva decisión arquitectónica significativa (por ejemplo, extraer un módulo a un servicio independiente, o cambiar el mecanismo de verificación de identidad) se documentará como un nuevo ADR numerado consecutivamente (el siguiente es el `0009`), siguiendo el mismo formato: contexto, decisión, alternativas consideradas y consecuencias.
+
