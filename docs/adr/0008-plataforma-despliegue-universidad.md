@@ -25,17 +25,15 @@ Lo que se aprendió en Vercel y sigue vigente como antecedente:
 
 ## Decisión
 
+## Decisión
+
 Se despliega la API en el **servidor de la universidad**, como contenedor Docker
-administrado desde el panel (servicio `LostVault_Api`, proyecto `lostvault`, entorno `production`).
+administrado desde el panel (servicio `LostVault_Api`, proyecto `lostvault`, entorno `production`)[cite: 1].
 
 - **Panel de administración**: `https://panel.iscoutb.dev/` (Plataforma ISCOUTB / Dokploy Server)[cite: 1].
-- **URL pública configurada en el panel**: `http://lostvault-lostvaultapi-1k8ly4-3d8075-144-24-4-187.sslip.io` (`Path: /`, `Port: 8000`, protocolo `HTTP`, `Cert: none`)[cite: 1]. **[CONFIRMAR: verificar estado del interruptor/habilitación del dominio en el panel y respuesta HTTP en vivo]**.
-- **Código desplegado**: **[CONFIRMAR: `backend/` o `api/`]**. El repositorio contiene dos
-  implementaciones con `Dockerfile`; solo `backend/` expone `GET /objects` (búsqueda,
-  Escenario 4), y solo `api/` está escrita para un panel con Container Port y health
-  checks (`api/README.md`).
-- **Variables de entorno**: `JWT_SECRET` obligatoria, definida en el panel y no en el
-  repositorio.
+- **URL pública activa**: `http://lostvault-lostvaultapi-1k8ly4-3d8075-144-24-4-187.sslip.io` (`Path: /`, `Port: 8000`, protocolo `HTTP`, `Cert: none`; verificada en vivo con `GET /health` devolviendo `{"status":"ok"}` y documentación Swagger UI disponible en `/docs`)[cite: 1, 6].
+- **Código desplegado**: **`api/`** (`LostVault Claims API 1.0.0`, OAS 3.1, implementa el contrato `docs/contracts/lostvault-api.yaml` con `GET /health`, `POST /v1/auth/login`, `POST /v1/objects`, `DELETE /v1/objects/{objectId}` y `POST /v1/objects/{objectId}/claims`)[cite: 6]. El repositorio contiene dos implementaciones con `Dockerfile` (`backend/` y `api/`); el despliegue activo corresponde a `api/` (diseñada para panel con *Container Port* y *health checks*), por lo que no expone `GET /objects` ni la ruta sin versión `/objects` (que responde `{"detail":"Not Found"}`)[cite: 6].
+- **Variables de entorno**: `JWT_SECRET` obligatoria, definida en el panel y no en el repositorio.
 - **Base de datos**: el servidor ofrece una, pero el código **todavía no se conecta a ella**
   (el estado sigue en memoria). La persistencia queda como propuesta en el
   [ADR 0006](0006-postgresql-fuente-de-verdad.md).
