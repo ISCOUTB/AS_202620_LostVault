@@ -38,7 +38,8 @@ Define `JWT_SECRET` como variable de entorno del servicio.
 | `AUTH_USER_ID` | Id del usuario (claim `sub`) | `user-1` |
 | `JWT_EXPIRES_MINUTES` | Vigencia del token emitido por el login | `60` |
 | `PORT` | Puerto del servidor (debe coincidir con el Container Port del dominio) | `8000` |
-| `DATABASE_URL` | URL de la base de datos (aún no se usa) | vacío |
+| `DATABASE_URL` | URL de PostgreSQL cuando se selecciona ese almacén | vacío |
+| `LOSTVAULT_STORAGE` | Use `postgres` para habilitar persistencia | memoria |
 
 El token debe incluir `sub` (id del usuario), `exp` y `email`. La identidad se
 considera verificada si el `email` pertenece a `VERIFIED_EMAIL_DOMAINS`.
@@ -100,7 +101,21 @@ despliegue público. Las credenciales quedan del lado del servidor.
 - `POST /v1/admin/objects` registra un objeto recibido.
 - `POST /v1/admin/objects/{object_id}/deliver` registra la entrega física.
 
-El inventario distingue disponible, reclamado y entregado. Registrar la entrega
-es idempotente y evita nuevas reclamaciones del objeto. Los datos siguen en la
-memoria del proceso y se pierden al reiniciar. Ejecute un solo proceso para la
-demo mientras el servicio use este almacén.
+El inventario distingue disponible, pendiente de revisión, aprobado y entregado.
+Una reclamación de la APK ingresa como pendiente. El encargado puede aprobarla
+o rechazarla con motivo, y registrar la entrega después de aprobarla. Las fichas
+guardan ubicación, fecha de recepción, enlace HTTPS de la foto e historial.
+
+La sección de estudiantes gestiona la cuenta definida por las variables
+`AUTH_USER_*`. Suspenderla bloquea el login e invalida sus tokens emitidos
+anteriormente. Reactivarla permite iniciar una sesión nueva.
+
+### Persistencia
+
+Configure `LOSTVAULT_STORAGE=postgres` y `DATABASE_URL` para guardar inventario,
+reclamaciones, historial e invalidación de sesiones en PostgreSQL. El usuario
+de base de datos necesita permisos para crear la tabla `lostvault_state` en el
+esquema de conexión. El servicio bloquea la fila de estado por transacción.
+Es un almacén para el corte académico y serializa las operaciones. El primer
+arranque parte del inventario semilla, sin migrar datos del proceso anterior.
+Sin esa configuración, el almacenamiento queda en memoria de un solo proceso.

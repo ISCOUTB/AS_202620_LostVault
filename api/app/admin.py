@@ -7,7 +7,9 @@ from fastapi.responses import FileResponse
 
 from app import objects, session
 from app.auth import AuthenticatedUser, current_admin
-from app.models import CreateObjectRequest, InventoryItem, LoginRequest, TokenResponse
+from app.config import single_user
+from app.errors import ApiError
+from app.models import IntakeRequest, InventoryItem, LoginRequest, ReviewRequest, SuspensionRequest, TokenResponse
 
 router = APIRouter()
 _page = Path(__file__).with_name("admin.html")
@@ -37,14 +39,14 @@ def inventory(
 
 @router.post("/v1/admin/objects", status_code=201, tags=["Administración"])
 def register_object(
-    body: CreateObjectRequest,
+    body: IntakeRequest,
     request: Request,
     response: Response,
     admin: AuthenticatedUser = Depends(current_admin),
 ) -> InventoryItem:
     response.headers.update(_NO_STORE)
-    obj = objects.create_object(request.app.state.store, admin, body.name, body.description)
-    return InventoryItem(id=obj.id, name=obj.name, description=obj.description, status="available")
+    store = request.app.state.store
+    return objects.create_object(store, admin, body.name, body.description, intake=body)
 
 
 @router.post("/v1/admin/objects/{object_id}/deliver", tags=["Administración"])
@@ -55,4 +57,39 @@ def deliver(
     _admin: AuthenticatedUser = Depends(current_admin),
 ) -> InventoryItem:
     response.headers.update(_NO_STORE)
-    return objects.mark_delivered(request.app.state.store, object_id)
+    return objects.mark_delivered(request.app.state.store, object_id, _admin.id)
+
+
+@router.post("/v1/admin/objects/{object_id}/review", tags=["Administración"])
+def review(
+    object_id: str, body: ReviewRequest, request: Request, response: Response,
+    admin: AuthenticatedUser = Depends(current_admin),
+) -> InventoryItem:
+    response.headers.update(_NO_STORE)
+    return objects.review_claim(
+        request.app.state.store, object_id, admin.id, body.decision == "approve", body.reason
+    )
+
+
+@router.get("/v1/admin/users", tags=["Administración"])
+def users(request: Request, response: Response, _admin=Depends(current_admin)):
+    response.headers.update(_NO_STORE)
+    account = single_user()
+    if account is None:
+        return []
+    user_id, email, _ = account
+    suspended, _ = request.app.state.store.user_session(user_id)
+    return [{"id": user_id, "email": email, "suspended": suspended}]
+
+
+@router.post("/v1/admin/users/{user_id}/suspension", tags=["Administración"])
+def suspension(
+    user_id: str, body: SuspensionRequest, request: Request, response: Response,
+    _admin=Depends(current_admin),
+):
+    response.headers.update(_NO_STORE)
+    account = single_user()
+    if account is None or account[0] != user_id:
+        raise ApiError(404, "FORBIDDEN", "La cuenta estudiantil no existe.")
+    suspended = request.app.state.store.set_suspended(user_id, body.suspended)
+    return {"id": user_id, "email": account[1], "suspended": suspended}

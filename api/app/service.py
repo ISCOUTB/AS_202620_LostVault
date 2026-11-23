@@ -38,7 +38,7 @@ def create_claim(
 ) -> ClaimOutcome:
     validate_idempotency_key(idempotency_key)
 
-    with store.lock:
+    with store.transaction():
         now = store.clock()
         store.purge_expired_keys(now)
 
@@ -76,6 +76,7 @@ def create_claim(
             )
 
         lost_object.claimed_by = user.id
+        lost_object.record("reclamado", user.id, now)
         if idempotency_key is not None:
             store.idempotency[(user.id, idempotency_key)] = (
                 object_id,

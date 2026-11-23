@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import admin, objects, service, session
 from app.auth import AuthenticatedUser, current_user
-from app.config import cors_origins, jwt_secret
+from app.config import cors_origins, jwt_secret, database_url
 from app.errors import ApiError, api_error_handler, validation_error_handler
 from app.models import (
     Claim,
@@ -18,7 +18,7 @@ from app.models import (
     Problem,
     TokenResponse,
 )
-from app.store import ClaimStore
+from app.store import ClaimStore, PostgresClaimStore
 
 
 @asynccontextmanager
@@ -37,7 +37,8 @@ def create_app(store: ClaimStore | None = None) -> FastAPI:
         ),
         lifespan=lifespan,
     )
-    app.state.store = store if store is not None else ClaimStore()
+    url = database_url()
+    app.state.store = store if store is not None else (PostgresClaimStore(url) if url else ClaimStore())
     app.add_exception_handler(ApiError, api_error_handler)
     app.add_exception_handler(RequestValidationError, validation_error_handler)
 
@@ -66,8 +67,8 @@ def create_app(store: ClaimStore | None = None) -> FastAPI:
             503: {"model": Problem, "description": "Login no configurado en el servidor."},
         },
     )
-    def login(body: LoginRequest) -> TokenResponse:
-        return session.login(body.email, body.password)
+    def login(body: LoginRequest, request: Request) -> TokenResponse:
+        return session.login(body.email, body.password, request.app.state.store)
 
     @app.post(
         "/v1/objects",

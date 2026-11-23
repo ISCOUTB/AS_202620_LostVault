@@ -33,11 +33,13 @@ def port() -> int:
 
 
 def database_url() -> str | None:
-    """URL de la base de datos. Todavía no se usa: el almacenamiento es en memoria.
-
-    Cuando exista la base de datos, define DATABASE_URL y reemplaza app/store.py.
-    """
-    return os.environ.get("DATABASE_URL") or None
+    """Lee la URL cuando PostgreSQL se habilita explícitamente."""
+    if os.environ.get("LOSTVAULT_STORAGE", "").lower() != "postgres":
+        return None
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        raise RuntimeError("DATABASE_URL es obligatorio con LOSTVAULT_STORAGE=postgres.")
+    return url
 
 
 def jwt_expires_minutes() -> int:
